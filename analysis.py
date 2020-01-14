@@ -1,3 +1,5 @@
+import csv
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -60,3 +62,8 @@ class BaseAnalyser:
         plt.savefig('{}/{}_{:.1f}_{:.1f}_max_prob={}.pdf'.format(
             file_name, layers, plot_min, plot_max, max_prob), transparent=True)
         plt.clf()
+
+    def write_log(self, file_name, log):
+        with open(file_name, 'w', newline='') as myfile:
+            wr = csv.writer(myfile, delimiter="\n")
+            wr.writerow(log)
