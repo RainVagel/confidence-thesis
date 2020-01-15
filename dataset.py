@@ -21,7 +21,7 @@ class MoonsDataset:
                   testing_samples=400, testing_shuffle=True, testing_noise=.02):
         X, y = self._generate_moons(n_samples, shuffle, noise)
         y = tf.one_hot(y, self.dim)
-
+        X = tf.convert_to_tensor(X)
         X_test, y_test = self._generate_moons(testing_samples, testing_shuffle, testing_noise)
         return X, y, X_test, y_test
 
@@ -46,6 +46,7 @@ class MoonsDataset:
         y_test = np.append(y_test, y_test_extra, axis=0)
 
         y = tf.one_hot(y, self.dim)
+        X = tf.convert_to_tensor(X)
 
         return X, y, X_test, y_test
 
@@ -68,4 +69,5 @@ class MoonsDataset:
                     X_test = np.append(X_test, X_test_extra, axis=0)
                     y_test = np.append(y_test, y_test_extra, axis=0)
         y = tf.one_hot(y, self.dim)
+        X = tf.convert_to_tensor(X)
         return X, y, X_test, y_test

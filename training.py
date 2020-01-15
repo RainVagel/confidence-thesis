@@ -32,13 +32,15 @@ def main():
     print("Model created!")
     runner = MActModelRunner(model, file_name, run_name, 200, 2)
     optimizer = Adam(learning_rate=0.01)
-    X, y, X_test, y_test = MoonsDataset().four_set_two_moons()
-    runner.model_experiment(optimizer=optimizer, acet=False, X=X, y=y, X_test=X_test, y_test=y_test)
-    runner.save_model()
+    moons_dataset = MoonsDataset()
+    X, y, X_test, y_test = moons_dataset.two_moons()
+    #print(X)
+    runner.model_experiment(optimizer=optimizer, acet=False, X=X, y=y, X_test=X_test, y_test=y_test, batch_size=64)
+    #runner.save_model()
 
-    loaded_model = load_model("codebase_trials/four_moons/dense100_dense100_relu_MAct_saved")
+    #loaded_model = load_model("codebase_trials/four_moons/dense100_dense100_relu_MAct_saved")
 
-    print(loaded_model.summary())
+    #print(loaded_model.summary())
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.layers import Layer
 
 from analysis import BaseAnalyser
+from sklearn.utils import shuffle
 
 
 class MAct(Layer):
@@ -87,32 +88,58 @@ class ModelRunner:
 
         return x_adv
 
-    def model_experiment(self, optimizer, acet, X, y, X_test, y_test):
+    def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
         print("Model experiment starting")
         info_list = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
-            X_noise = tf.random.uniform([2 * X.shape[0], X.shape[1]])
-            # If we use the ACET method, then adversarial noise will be generated
-            if acet:
-                X_noise = self.gen_adv(X_noise)
-            # Context used to calculate the gradients of the model
-            with tf.GradientTape() as tape:
-                logits = self.model(X)
-                logits_noise = self.model(X_noise)
-                loss_main = self.cross_ent(logits, y)
-                loss_acet = acet * self.max_conf(logits_noise)
-                loss = loss_main + loss_acet
-            grads = tape.gradient(loss, self.model.trainable_variables)
-            optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-            if epoch % 100 == 0:
-                train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
-                print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                      .format(epoch, loss_main, loss_acet, train_err))
 
-                info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
-                                 .format(epoch, loss_main, loss_acet, train_err))
+            if batch_size != 0:
+                train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
+                train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+                for step, (x_batch, y_batch) in enumerate(train_dataset):
+                    X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
+                    # If we use the ACET method, then adversarial noise will be generated
+                    if acet:
+                        X_noise = self.gen_adv(X_noise)
+                    # Context used to calculate the gradients of the model
+                    with tf.GradientTape() as tape:
+                        logits = self.model(x_batch)
+                        logits_noise = self.model(X_noise)
+                        loss_main = self.cross_ent(logits, y_batch)
+                        loss_acet = acet * self.max_conf(logits_noise)
+                        loss = loss_main + loss_acet
+                    grads = tape.gradient(loss, self.model.trainable_variables)
+                    optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+                    if epoch % 100 == 0 and step == 0:
+                        train_err = np.mean(logits.numpy().argmax(1) != y_batch.numpy().argmax(1))
+                        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+                              .format(epoch, loss_main, loss_acet, train_err))
+
+                        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
+                                         .format(epoch, loss_main, loss_acet, train_err))
+            else:
+                X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
+                # If we use the ACET method, then adversarial noise will be generated
+                if acet:
+                    X_noise = self.gen_adv(X_noise)
+                # Context used to calculate the gradients of the model
+                with tf.GradientTape() as tape:
+                    logits = self.model(X)
+                    logits_noise = self.model(X_noise)
+                    loss_main = self.cross_ent(logits, y)
+                    loss_acet = acet * self.max_conf(logits_noise)
+                    loss = loss_main + loss_acet
+                grads = tape.gradient(loss, self.model.trainable_variables)
+                optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+                if epoch % 100 == 0:
+                    train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
+                    print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+                          .format(epoch, loss_main, loss_acet, train_err))
+
+                    info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
+                                     .format(epoch, loss_main, loss_acet, train_err))
 
         file_name = "{}/{}_iters={}.csv".format(self.file_name, self.run_name, self.iterations)
 
@@ -162,6 +189,12 @@ class ModelRunner:
             preds_conf.append((prediction.argmax(-1), prediction[prediction.argmax(-1)]))
         return preds_conf
 
+    def evaluate(self, X, y, batch_size=None):
+        if batch_size is None:
+            return self.model.evaluate(X, y)
+        else:
+            return self.model.evaluate(X, y, batch_size=batch_size)
+
 
 class MActModelRunner(ModelRunner):
     def cross_ent(self, probs, y):
@@ -176,33 +209,59 @@ class MActModelRunner(ModelRunner):
         losses = -cce(probs, y)
         return tf.reduce_mean(losses)
 
-    def model_experiment(self, optimizer, acet, X, y, X_test, y_test):
+    def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
         print("Model experiment starting")
         info_list = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
-            X_noise = tf.random.uniform([2 * X.shape[0], X.shape[1]])
-            # If we use the ACET method, then adversarial noise will be generated
-            if acet:
-                X_noise = self.gen_adv(X_noise)
-            # Context used to calculate the gradients of the model
-            with tf.GradientTape() as tape:
-                logits = self.model(X)
-                logits_noise = self.model(X_noise)
-                loss_main = self.cross_ent(logits, y)
-                loss_acet = acet * self.max_conf(logits_noise)
-                loss = loss_main + loss_acet
-            grads = tape.gradient(loss, self.model.trainable_variables)
-            optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-            if epoch % 100 == 0:
-                train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
-                print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                      .format(epoch, loss_main, loss_acet, train_err))
+            if batch_size != 0:
+                train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
+                train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+                for step, (x_batch, y_batch) in enumerate(train_dataset):
+                    X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
+                    # If we use the ACET method, then adversarial noise will be generated
+                    if acet:
+                        X_noise = self.gen_adv(X_noise)
+                    # Context used to calculate the gradients of the model
+                    with tf.GradientTape() as tape:
+                        logits = self.model(x_batch)
+                        logits_noise = self.model(X_noise)
+                        loss_main = self.cross_ent(logits, y_batch)
+                        loss_acet = acet * self.max_conf(logits_noise)
+                        loss = loss_main + loss_acet
+                    grads = tape.gradient(loss, self.model.trainable_variables)
+                    optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+                    if epoch % 100 == 0 and step == 0:
+                        train_err = np.mean(logits.numpy().argmax(1) != y_batch.numpy().argmax(1))
+                        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+                              .format(epoch, loss_main, loss_acet, train_err))
 
-                weights = self.model.layers[-1].get_weights()
-                info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
-                                 .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
+                        weights = self.model.layers[-1].get_weights()
+                        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
+                                         .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
+            else:
+                X_noise = tf.random.uniform([2 * X.shape[0], X.shape[1]])
+                # If we use the ACET method, then adversarial noise will be generated
+                if acet:
+                    X_noise = self.gen_adv(X_noise)
+                # Context used to calculate the gradients of the model
+                with tf.GradientTape() as tape:
+                    logits = self.model(X)
+                    logits_noise = self.model(X_noise)
+                    loss_main = self.cross_ent(logits, y)
+                    loss_acet = acet * self.max_conf(logits_noise)
+                    loss = loss_main + loss_acet
+                grads = tape.gradient(loss, self.model.trainable_variables)
+                optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+                if epoch % 100 == 0:
+                    train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
+                    print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+                          .format(epoch, loss_main, loss_acet, train_err))
+
+                    weights = self.model.layers[-1].get_weights()
+                    info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
+                                     .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
 
         file_name = "{}/{}_iters={}.csv".format(self.file_name, self.run_name, self.iterations)
 
