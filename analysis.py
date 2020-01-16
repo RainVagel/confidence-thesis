@@ -67,3 +67,10 @@ class BaseAnalyser:
         with open(file_name, 'w', newline='') as myfile:
             wr = csv.writer(myfile, delimiter="\n")
             wr.writerow(log)
+
+    def generate_loss_curve(self, file_name, loss_list, iter_list):
+        plt.plot(iter_list, loss_list)
+        plt.xticks(iter_list, iter_list)
+        plt.title("Loss curve")
+        plt.savefig('{}_loss_curve.png'.format(file_name))
+        plt.clf()

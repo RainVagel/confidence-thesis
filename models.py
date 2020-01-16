@@ -7,7 +7,11 @@ import tensorflow as tf
 
 from tensorflow.keras import initializers
 from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.layers import Layer
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Layer
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.optimizers import RMSprop
 
 from analysis import BaseAnalyser
 from sklearn.utils import shuffle
@@ -91,6 +95,8 @@ class ModelRunner:
     def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
         print("Model experiment starting")
         info_list = []
+        loss_curve = []
+        iter_list = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
@@ -117,6 +123,9 @@ class ModelRunner:
                         print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
                               .format(epoch, loss_main, loss_acet, train_err))
 
+                        loss_curve.append(loss_main)
+                        iter_list.append(epoch)
+
                         info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
                                          .format(epoch, loss_main, loss_acet, train_err))
             else:
@@ -137,6 +146,9 @@ class ModelRunner:
                     train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
                     print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
                           .format(epoch, loss_main, loss_acet, train_err))
+
+                    loss_curve.append(loss_main)
+                    iter_list.append(epoch)
 
                     info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
                                      .format(epoch, loss_main, loss_acet, train_err))
@@ -212,6 +224,8 @@ class MActModelRunner(ModelRunner):
     def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
         print("Model experiment starting")
         info_list = []
+        loss_curve = []
+        iter_list = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
@@ -237,6 +251,9 @@ class MActModelRunner(ModelRunner):
                         print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
                               .format(epoch, loss_main, loss_acet, train_err))
 
+                        loss_curve.append(loss_main)
+                        iter_list.append(epoch)
+
                         weights = self.model.layers[-1].get_weights()
                         info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
                                          .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
@@ -259,6 +276,9 @@ class MActModelRunner(ModelRunner):
                     print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
                           .format(epoch, loss_main, loss_acet, train_err))
 
+                    loss_curve.append(loss_main)
+                    iter_list.append(epoch)
+
                     weights = self.model.layers[-1].get_weights()
                     info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
                                      .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
@@ -278,3 +298,92 @@ class MActModelRunner(ModelRunner):
                       .format(self.iterations), X, y)
         print("Plotting completed")
 
+
+class CifarModelRunner(ModelRunner):
+
+    def __init__(self, model, file_name, run_name, iterations, dim, data_augmentation=False):
+        super().__init__(model, file_name, run_name, iterations, dim)
+        self.data_augmentation = data_augmentation
+
+    def load_keras_cifar10_model(self, x_train, num_classes=10, mact=False):
+        self.model = Sequential()
+        self.model.add(Conv2D(32, (3, 3), padding='same',
+                              input_shape=x_train.shape[1:]))
+        self.model.add(Activation('relu'))
+        self.model.add(Conv2D(32, (3, 3)))
+        self.model.add(Activation('relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+
+        self.model.add(Conv2D(64, (3, 3), padding='same'))
+        self.model.add(Activation('relu'))
+        self.model.add(Conv2D(64, (3, 3)))
+        self.model.add(Activation('relu'))
+        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(Dropout(0.25))
+
+        self.model.add(Flatten())
+        self.model.add(Dense(512))
+        self.model.add(Activation('relu'))
+        self.model.add(Dropout(0.5))
+        self.model.add(Dense(num_classes))
+        if mact:
+            self.model.add(MAct())
+        else:
+            self.model.add(Activation('softmax'))
+
+    def get_default_optimizer(self):
+        return RMSprop(learning_rate=0.0001, decay=1e-6)
+
+    def compile_model(self, opt, loss='categorical_crossentropy', metrics='accuracy'):
+        self.model.compile(loss=loss,
+                           optimizer=opt,
+                           metrics=[metrics])
+
+    def get_history(self):
+        return self.history
+
+    def model_experiment(self, optimizer, X, y, X_test, y_test, batch_size=0, shuffle=True, workers=0):
+        if not self.data_augmentation:
+            self.history = self.model.fit(X, y, batch_size=batch_size, epochs=self.iterations,
+                           validation_data=(X_test, y_test), shuffle=shuffle)
+        else:
+            datagen = ImageDataGenerator(
+                featurewise_center=False,  # set input mean to 0 over the dataset
+                samplewise_center=False,  # set each sample mean to 0
+                featurewise_std_normalization=False,  # divide inputs by std of the dataset
+                samplewise_std_normalization=False,  # divide each input by its std
+                zca_whitening=False,  # apply ZCA whitening
+                zca_epsilon=1e-06,  # epsilon for ZCA whitening
+                rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
+                # randomly shift images horizontally (fraction of total width)
+                width_shift_range=0.1,
+                # randomly shift images vertically (fraction of total height)
+                height_shift_range=0.1,
+                shear_range=0.,  # set range for random shear
+                zoom_range=0.,  # set range for random zoom
+                channel_shift_range=0.,  # set range for random channel shifts
+                # set mode for filling points outside the input boundaries
+                fill_mode='nearest',
+                cval=0.,  # value used for fill_mode = "constant"
+                horizontal_flip=True,  # randomly flip images
+                vertical_flip=False,  # randomly flip images
+                # set rescaling factor (applied before any other transformation)
+                rescale=None,
+                # set function that will be applied on each input
+                preprocessing_function=None,
+                # image data format, either "channels_first" or "channels_last"
+                data_format=None,
+                # fraction of images reserved for validation (strictly between 0 and 1)
+                validation_split=0.0)
+
+            # Compute quantities required for feature-wise normalization
+            # (std, mean, and principal components if ZCA whitening is applied).
+            datagen.fit(X)
+
+            # Fit the model on the batches generated by datagen.flow().
+            self.history = self.model.fit_generator(datagen.flow(X, y,
+                                             batch_size=batch_size),
+                                epochs=self.iterations,
+                                validation_data=(X_test, y_test),
+                                workers=workers)

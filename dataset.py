@@ -71,3 +71,26 @@ class MoonsDataset:
         y = tf.one_hot(y, self.dim)
         X = tf.convert_to_tensor(X)
         return X, y, X_test, y_test
+
+
+class CifarDataset:
+    def __init__(self, cifar_version=10):
+        self.cifar_version = cifar_version
+
+    def load_dataset(self):
+        if self.cifar_version == 10:
+            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+        elif self.cifar_version == 100:
+            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+        else:
+            raise Exception("Unsupported CIFAR version: {}".format(self.cifar_version))
+
+        y_train = tf.keras.utils.to_categorical(y_train, self.cifar_version)
+        y_test = tf.keras.utils.to_categorical(y_test, self.cifar_version)
+
+        x_train = x_train.astype('float32')
+        x_test = x_test.astype('float32')
+        x_train /= 255
+        x_test /= 255
+
+        return x_train, y_train, x_test, y_test

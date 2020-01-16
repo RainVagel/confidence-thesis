@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Dense, Activation
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 
+from analysis import BaseAnalyser
 from dataset import MoonsDataset
 from models import ModelRunner, MAct, MActModelRunner
 
@@ -26,16 +27,19 @@ def main():
     file_name = "codebase_trials/four_moons"
     run_name = "dense100_dense100_relu_MAct_saved"
 
-    Path(file_name).mkdir(parents=True, exist_ok=True)
+    analyser = BaseAnalyser()
+    analyser.generate_loss_curve("lolo", [-0.12, -0.22, -0.444], [100, 200, 300])
+
+    #Path(file_name).mkdir(parents=True, exist_ok=True)
     print("Creating model!")
-    model = create_model()
+    #model = create_model()
     print("Model created!")
-    runner = MActModelRunner(model, file_name, run_name, 200, 2)
-    optimizer = Adam(learning_rate=0.01)
-    moons_dataset = MoonsDataset()
-    X, y, X_test, y_test = moons_dataset.two_moons()
+    #runner = MActModelRunner(model, file_name, run_name, 200, 2)
+    #optimizer = Adam(learning_rate=0.01)
+    #moons_dataset = MoonsDataset()
+    #X, y, X_test, y_test = moons_dataset.two_moons()
     #print(X)
-    runner.model_experiment(optimizer=optimizer, acet=False, X=X, y=y, X_test=X_test, y_test=y_test, batch_size=64)
+    #runner.model_experiment(optimizer=optimizer, acet=False, X=X, y=y, X_test=X_test, y_test=y_test, batch_size=64)
     #runner.save_model()
 
     #loaded_model = load_model("codebase_trials/four_moons/dense100_dense100_relu_MAct_saved")
