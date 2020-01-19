@@ -18,22 +18,28 @@ from sklearn.utils import shuffle
 
 
 class MAct(Layer):
+    """
+    Original modified softmax function.
+    """
 
-    def __init__(self, c_initializer=initializers.Ones(), b_initializer=initializers.Ones(), **kwargs):
+    def __init__(self, c_initializer=initializers.Ones(), b_initializer=initializers.Ones(),
+                 c_trainable=True, b_trainable=True, **kwargs):
         super(MAct, self).__init__(**kwargs)
         self.c_initializer = c_initializer
         self.b_initializer = b_initializer
         self.supports_masking = True
+        self.c_trainable = c_trainable
+        self.b_trainable = b_trainable
 
     def build(self, input_shape):
         self.c = self.add_weight(name="c",
                                  shape=(input_shape[1],),
                                  initializer=self.c_initializer,
-                                 trainable=True)  # Initialiseerida c ühtedeks / nullideks
+                                 trainable=self.c_trainable)  # Initialiseerida c ühtedeks / nullideks
         self.b = self.add_weight(name="b",
                                  shape=(input_shape[1],),
                                  initializer=self.b_initializer,
-                                 trainable=True)  # Initialiseerida b nullideks
+                                 trainable=self.b_trainable)  # Initialiseerida b nullideks
         super(MAct, self).build(input_shape)
 
     def call(self, inputs):
@@ -46,6 +52,22 @@ class MAct(Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
+
+class MactAbs(MAct):
+    """
+    Newer modified softmax that we tried during the meeting at Delta held on the 16th of January.
+
+    Instead of squaring the inputs we take the absolute value and b is negative.
+    """
+
+    def call(self, inputs):
+        first_exp = tf.exp(self.c - tf.abs(inputs))
+
+        p = (first_exp + tf.exp(-self.b)) / tf.reduce_sum(first_exp + tf.exp(-self.b), axis=1, keepdims=True)
+
+        # p = tf.exp(inputs) / tf.reduce_sum(tf.exp(inputs), axis=0, keepdims=True)
+        return p
 
 
 class ModelRunner:
