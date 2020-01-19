@@ -53,11 +53,6 @@ class BaseAnalyser:
         plt.xlim([plot_min, plot_max])
         plt.ylim([plot_min, plot_max])
 
-        margin = 0.01
-        rect = matplotlib.patches.Rectangle((-margin, -margin), 1.0 + 2 * margin, 1.0 + 2 * margin,
-                                            linewidth=1.5, color='white', fill=False)
-        ax.add_patch(rect)
-
         plt.gca().set_aspect('equal', adjustable='box')
         plt.savefig('{}/{}_{:.1f}_{:.1f}_max_prob={}.pdf'.format(
             file_name, layers, plot_min, plot_max, max_prob), transparent=True)

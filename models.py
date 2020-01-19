@@ -12,6 +12,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Layer
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.metrics import CategoricalAccuracy
 
 from analysis import BaseAnalyser
 from sklearn.utils import shuffle
@@ -54,7 +55,7 @@ class MAct(Layer):
         return input_shape
 
 
-class MactAbs(MAct):
+class MActAbs(MAct):
     """
     Newer modified softmax that we tried during the meeting at Delta held on the 16th of January.
 
@@ -114,18 +115,39 @@ class ModelRunner:
 
         return x_adv
 
-    def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
+    def experiment_logging(self, logits, X, y, train_err, epoch, loss_main, loss_acet, loss_curve,
+                           iter_list, info_list, inter_plots, analyser):
+        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+              .format(epoch, loss_main, loss_acet, train_err))
+
+        loss_curve.append(loss_main)
+        iter_list.append(epoch)
+
+        if inter_plots:
+            analyser.plot(self.model, 0.0, 2.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
+                          .format(epoch), X, y)
+            analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
+                          .format(epoch), X, y)
+
+        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
+                         .format(epoch, loss_main, loss_acet, train_err))
+        return loss_curve, iter_list, info_list
+
+    def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0,
+                         buffer_size=10000, save_step=100, inter_plots=False):
         print("Model experiment starting")
+        analyser = BaseAnalyser()
         info_list = []
         loss_curve = []
         iter_list = []
+        errors = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
 
             if batch_size != 0:
                 train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
-                train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
+                train_dataset = train_dataset.shuffle(buffer_size=buffer_size).batch(batch_size)
                 for step, (x_batch, y_batch) in enumerate(train_dataset):
                     X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
                     # If we use the ACET method, then adversarial noise will be generated
@@ -140,16 +162,12 @@ class ModelRunner:
                         loss = loss_main + loss_acet
                     grads = tape.gradient(loss, self.model.trainable_variables)
                     optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-                    if epoch % 100 == 0 and step == 0:
-                        train_err = np.mean(logits.numpy().argmax(1) != y_batch.numpy().argmax(1))
-                        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                              .format(epoch, loss_main, loss_acet, train_err))
-
-                        loss_curve.append(loss_main)
-                        iter_list.append(epoch)
-
-                        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
-                                         .format(epoch, loss_main, loss_acet, train_err))
+                    errors.append(np.mean(logits.numpy().argmax(1) != y_batch.numpy().argmax(1)))
+                if epoch % save_step == 0:
+                    print(epoch)
+                    loss_curve, iter_list, info_list = self.experiment_logging(
+                        logits, X, y, epoch, np.mean(errors), loss_main, loss_acet, loss_curve, iter_list,
+                        info_list, inter_plots, analyser)
             else:
                 X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
                 # If we use the ACET method, then adversarial noise will be generated
@@ -164,21 +182,16 @@ class ModelRunner:
                     loss = loss_main + loss_acet
                 grads = tape.gradient(loss, self.model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-                if epoch % 100 == 0:
-                    train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
-                    print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                          .format(epoch, loss_main, loss_acet, train_err))
-
-                    loss_curve.append(loss_main)
-                    iter_list.append(epoch)
-
-                    info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
-                                     .format(epoch, loss_main, loss_acet, train_err))
+                train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
+                if epoch % save_step == 0:
+                    print(epoch)
+                    loss_curve, iter_list, info_list = self.experiment_logging(
+                        logits, X, y, epoch, train_err, loss_main, loss_acet, loss_curve, iter_list,
+                        info_list, inter_plots, analyser)
 
         file_name = "{}/{}_iters={}.csv".format(self.file_name, self.run_name, self.iterations)
 
         print("Starting plotting!")
-        analyser = BaseAnalyser()
         analyser.write_log(file_name, info_list)
         analyser.plot(self.model, 0.0, 1.0, True, self.file_name, self.run_name + "_iters={}"
                       .format(self.iterations), X, y)
@@ -223,11 +236,9 @@ class ModelRunner:
             preds_conf.append((prediction.argmax(-1), prediction[prediction.argmax(-1)]))
         return preds_conf
 
-    def evaluate(self, X, y, batch_size=None):
-        if batch_size is None:
-            return self.model.evaluate(X, y)
-        else:
-            return self.model.evaluate(X, y, batch_size=batch_size)
+    def evaluate(self, X, y):
+        accuracy_metric = CategoricalAccuracy()
+        return accuracy_metric(y, self.model(X))
 
 
 class MActModelRunner(ModelRunner):
@@ -243,82 +254,24 @@ class MActModelRunner(ModelRunner):
         losses = -cce(probs, y)
         return tf.reduce_mean(losses)
 
-    def model_experiment(self, optimizer, acet, X, y, X_test, y_test, batch_size=0):
-        print("Model experiment starting")
-        info_list = []
-        loss_curve = []
-        iter_list = []
+    def experiment_logging(self, logits, X, y, epoch, train_err, loss_main, loss_acet, loss_curve,
+                           iter_list, info_list, inter_plots, analyser):
+        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
+              .format(epoch, loss_main, loss_acet, train_err))
 
-        # Custom training cycle going through the entire dataset
-        for epoch in range(1, self.iterations + 1):
-            if batch_size != 0:
-                train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
-                train_dataset = train_dataset.shuffle(buffer_size=1024).batch(batch_size)
-                for step, (x_batch, y_batch) in enumerate(train_dataset):
-                    X_noise = tf.random.uniform([2 * x_batch.shape[0], x_batch.shape[1]])
-                    # If we use the ACET method, then adversarial noise will be generated
-                    if acet:
-                        X_noise = self.gen_adv(X_noise)
-                    # Context used to calculate the gradients of the model
-                    with tf.GradientTape() as tape:
-                        logits = self.model(x_batch)
-                        logits_noise = self.model(X_noise)
-                        loss_main = self.cross_ent(logits, y_batch)
-                        loss_acet = acet * self.max_conf(logits_noise)
-                        loss = loss_main + loss_acet
-                    grads = tape.gradient(loss, self.model.trainable_variables)
-                    optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-                    if epoch % 100 == 0 and step == 0:
-                        train_err = np.mean(logits.numpy().argmax(1) != y_batch.numpy().argmax(1))
-                        print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                              .format(epoch, loss_main, loss_acet, train_err))
+        loss_curve.append(loss_main)
+        iter_list.append(epoch)
 
-                        loss_curve.append(loss_main)
-                        iter_list.append(epoch)
+        if inter_plots:
+            analyser.plot(self.model, 0.0, 2.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
+                          .format(epoch), X, y)
+            analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
+                          .format(epoch), X, y)
 
-                        weights = self.model.layers[-1].get_weights()
-                        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
-                                         .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
-            else:
-                X_noise = tf.random.uniform([2 * X.shape[0], X.shape[1]])
-                # If we use the ACET method, then adversarial noise will be generated
-                if acet:
-                    X_noise = self.gen_adv(X_noise)
-                # Context used to calculate the gradients of the model
-                with tf.GradientTape() as tape:
-                    logits = self.model(X)
-                    logits_noise = self.model(X_noise)
-                    loss_main = self.cross_ent(logits, y)
-                    loss_acet = acet * self.max_conf(logits_noise)
-                    loss = loss_main + loss_acet
-                grads = tape.gradient(loss, self.model.trainable_variables)
-                optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
-                if epoch % 100 == 0:
-                    train_err = np.mean(logits.numpy().argmax(1) != y.numpy().argmax(1))
-                    print("Iter {:03d}: loss_main={:.10f} loss_acet={:.3f} err={:.2%}"
-                          .format(epoch, loss_main, loss_acet, train_err))
-
-                    loss_curve.append(loss_main)
-                    iter_list.append(epoch)
-
-                    weights = self.model.layers[-1].get_weights()
-                    info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
-                                     .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
-
-        file_name = "{}/{}_iters={}.csv".format(self.file_name, self.run_name, self.iterations)
-
-        print("Starting plotting!")
-        analyser = BaseAnalyser()
-        analyser.write_log(file_name, info_list)
-        analyser.plot(self.model, 0.0, 1.0, True, self.file_name, self.run_name + "_iters={}"
-                      .format(self.iterations), X, y)
-        analyser.plot(self.model, -2.0, 3.0, True, self.file_name, self.run_name + "_iters={}"
-                      .format(self.iterations), X, y)
-        analyser.plot(self.model, -5.0, 6.0, True, self.file_name, self.run_name + "_iters={}"
-                      .format(self.iterations), X, y)
-        analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_iters={}"
-                      .format(self.iterations), X, y)
-        print("Plotting completed")
+        weights = self.model.layers[-1].get_weights()
+        info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"
+                         .format(epoch, loss_main, loss_acet, train_err, weights[0], weights[1]))
+        return loss_curve, iter_list, info_list
 
 
 class CifarModelRunner(ModelRunner):
@@ -365,10 +318,11 @@ class CifarModelRunner(ModelRunner):
     def get_history(self):
         return self.history
 
-    def model_experiment(self, optimizer, X, y, X_test, y_test, batch_size=0, shuffle=True, workers=0):
+    def model_experiment(self, optimizer, X, y, X_test, y_test, batch_size=0, shuffle=True,
+                         buffer_size=10000, save_step=100, workers=0):
         if not self.data_augmentation:
             self.history = self.model.fit(X, y, batch_size=batch_size, epochs=self.iterations,
-                           validation_data=(X_test, y_test), shuffle=shuffle)
+                           validation_data=(X_test, y_test), shuffle=shuffle, buffer_size=buffer_size)
         else:
             datagen = ImageDataGenerator(
                 featurewise_center=False,  # set input mean to 0 over the dataset
