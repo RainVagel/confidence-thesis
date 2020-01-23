@@ -65,7 +65,7 @@ class MActAbs(MAct):
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
 
-        p = (first_exp + tf.exp(-self.b)) / tf.reduce_sum(first_exp + tf.exp(-self.b), axis=1, keepdims=True)
+        p = (first_exp + tf.exp(-self.b*0.1)) / tf.reduce_sum(first_exp + tf.exp(-self.b*0.1), axis=1, keepdims=True)
 
         # p = tf.exp(inputs) / tf.reduce_sum(tf.exp(inputs), axis=0, keepdims=True)
         return p

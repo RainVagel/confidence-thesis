@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 class BaseAnalyser:
-    def __init__(self, m_act=False):
+    def __init__(self, m_act=True):
         self.m_act = m_act
 
     def plot(self, model, plot_min, plot_max, max_prob, file_name, layers, X, y):
@@ -32,8 +32,6 @@ class BaseAnalyser:
         else:
             z_plot = probs[:, 0]
         z_plot = z_plot.reshape(len(x_plot), len(y_plot)) * 100
-
-        ax = plt.gca()
 
         vmax = 100
         vmin = 50 if max_prob else 0
