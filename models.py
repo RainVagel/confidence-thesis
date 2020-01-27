@@ -65,7 +65,7 @@ class MActAbs(MAct):
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
 
-        p = (first_exp + tf.exp(-self.b*0.1)) / tf.reduce_sum(first_exp + tf.exp(-self.b*0.1), axis=1, keepdims=True)
+        p = (first_exp + tf.exp(-self.b)) / tf.reduce_sum(first_exp + tf.exp(-self.b), axis=1, keepdims=True)
 
         # p = tf.exp(inputs) / tf.reduce_sum(tf.exp(inputs), axis=0, keepdims=True)
         return p
@@ -128,6 +128,8 @@ class ModelRunner:
                           .format(epoch), X, y)
             analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
                           .format(epoch), X, y)
+            analyser.get_output(model=self.model, X=X, layer=-2, file_name=self.file_name,
+                                layers=self.run_name + "_inter_plot_epoch={}".format(epoch))
 
         info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%}"
                          .format(epoch, loss_main, loss_acet, train_err))
@@ -140,11 +142,10 @@ class ModelRunner:
         info_list = []
         loss_curve = []
         iter_list = []
-        errors = []
 
         # Custom training cycle going through the entire dataset
         for epoch in range(1, self.iterations + 1):
-
+            errors = []
             if batch_size != 0:
                 train_dataset = tf.data.Dataset.from_tensor_slices((X, y))
                 train_dataset = train_dataset.shuffle(buffer_size=buffer_size).batch(batch_size)
@@ -201,6 +202,9 @@ class ModelRunner:
                       .format(self.iterations), X, y)
         analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_iters={}"
                       .format(self.iterations), X, y)
+        analyser.single_output_plot(model=self.model, plot_min=0.0, plot_max=2.0, layer=-2,
+                                    file_name=self.file_name, layers=self.run_name + "_epoch={}"
+                                    .format(self.iterations))
         print("Plotting completed")
 
     def save_model(self, folder_name=None, file_name=None):
@@ -267,6 +271,9 @@ class MActModelRunner(ModelRunner):
                           .format(epoch), X, y)
             analyser.plot(self.model, -10.0, 10.0, True, self.file_name, self.run_name + "_inter_plot_epoch={}"
                           .format(epoch), X, y)
+            analyser.single_output_plot(model=self.model, plot_min=0.0, plot_max=2.0, layer=-2,
+                                        file_name=self.file_name, layers=self.run_name + "_inter_plot_epoch={}"
+                                        .format(epoch))
 
         weights = self.model.layers[-1].get_weights()
         info_list.append("Iter {:03d}: loss_main={:.10f} loss_acet={:.6f} err={:.2%} c: {}, b: {}"

@@ -4,11 +4,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import tensorflow as tf
+from tensorflow.keras import backend as K
 
 
 class BaseAnalyser:
     def __init__(self, m_act=True):
         self.m_act = m_act
+
+    def get_output(self, X, model, layer):
+        layer_output = K.function([model.layers[0].input],
+                                  [model.layers[layer].output])
+        output = layer_output([X])[0]
+        return output
+
+    def single_output_plot(self, model, layer, file_name, layers, plot_min, plot_max):
+        n_grid = 200
+        x_plot = np.linspace(plot_min, plot_max, n_grid)
+        y_plot = np.linspace(plot_min, plot_max, n_grid)
+
+        points = []
+        for xx in x_plot:
+            for yy in y_plot:
+                points.append((yy, xx))
+        points = np.array(points)
+
+        output = self.get_output(points, model, layer)
+
+        column_nr = np.size(output, 1)
+
+        for column in range(0, column_nr):
+            z_plot = output[:, column]
+            z_plot = z_plot.reshape(len(x_plot), len(y_plot)) * 100
+
+            vmax = np.max(z_plot)
+            vmin = np.min(z_plot)
+            plt.subplot(1, column_nr, column+1)
+            plt.contourf(x_plot, y_plot, z_plot, levels=np.linspace(vmin, vmax, 5), cmap='seismic')
+            plt.gca().set_aspect('equal', adjustable='box')
+            plt.title("Z_{}".format(column))
+
+        plt.savefig('{}/{}_{:.1f}_{:.1f}.pdf'.format(
+            file_name, layers, plot_min, plot_max), transparent=True)
+        plt.clf()
 
     def plot(self, model, plot_min, plot_max, max_prob, file_name, layers, X, y):
         n_grid = 200

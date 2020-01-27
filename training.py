@@ -70,7 +70,7 @@ def main():
     #print(loaded_model.summary())
 
 
-def run_for_trial(model_function, file_name, run_name):
+def run_for_trial(model_function, n_iterations, file_name, run_name):
     print(model_function)
     if model_function == 'create_relu_model':
         model = create_relu_model()
@@ -79,7 +79,7 @@ def run_for_trial(model_function, file_name, run_name):
     else:
         raise Exception("Such model does not exist!")
     folder_creater(file_name)
-    runner = MActModelRunner(model, file_name, run_name, iterations=1000, dim=2)
+    runner = MActModelRunner(model, file_name, run_name, iterations=n_iterations, dim=2)
     optimizer = Adam(learning_rate=0.001)
     moons_dataset = MoonsDataset()
     X, y, X_test, y_test = moons_dataset.four_set_two_moons(n_samples=1000)
@@ -91,7 +91,18 @@ def run_for_trial(model_function, file_name, run_name):
 if __name__ == "__main__":
     #main()
     model_function = sys.argv[1]
-    file_name = sys.argv[2]
-    run_name = sys.argv[3]
-    run_for_trial(model_function, file_name, run_name)
+    n_iterations = int(sys.argv[2])
+    file_name = sys.argv[3]
+    run_name = sys.argv[4]
+    run_for_trial(model_function, n_iterations, file_name, run_name)
+
+    #loaded_model = load_model("four_moons/tanh_modded_5/d100_d100_d100_d100_d2_tanh_MActAbs")
+
+    #analyser = BaseAnalyser()
+
+    #moons_dataset = MoonsDataset()
+
+    #X, y, X_test, y_test = moons_dataset.four_set_two_moons(n_samples=1000)
+
+    #analyser.single_output_plot(model=loaded_model, layer=-2, file_name="trololo", layers="lubub", plot_min=0.0, plot_max=2.0)
 
