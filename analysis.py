@@ -104,3 +104,12 @@ class BaseAnalyser:
         plt.title("Loss curve")
         plt.savefig('{}_loss_curve.png'.format(file_name))
         plt.clf()
+
+    def plot_history(self, file_name, layers, history):
+        for key in history.history:
+            plt.plot(history.history[key])
+            plt.ylabel(key)
+            plt.xlabel("Epoch")
+            plt.title(key)
+            plt.savefig('{}/{}_{}.png'.format(file_name, layers, key))
+            plt.clf()
