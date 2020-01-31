@@ -81,7 +81,7 @@ class CifarDataset:
         if self.cifar_version == 10:
             (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
         elif self.cifar_version == 100:
-            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+            (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar100.load_data()
         else:
             raise Exception("Unsupported CIFAR version: {}".format(self.cifar_version))
 
@@ -94,3 +94,9 @@ class CifarDataset:
         x_test /= 255
 
         return x_train, y_train, x_test, y_test
+
+    def load_label_names(self):
+        if self.cifar_version == 10:
+            return ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+        else:
+            raise Exception("Unsupported CIFAR version for labels: {}".format(self.cifar_version))

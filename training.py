@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import numpy as np
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
@@ -130,8 +131,21 @@ if __name__ == "__main__":
     #model.fit(X, y, validation_data=(X_test, y_test), batch_size=128, epochs=10, verbose=1, callbacks=[history])
     #print(history.history)
 
+    # Create the Cifar dataset class
+    cifar_data = CifarDataset()
+    # Load the cifar-10 dataset
+    x_train, y_train, x_test, y_test = cifar_data.load_dataset()
+    cifar_labels = cifar_data.load_label_names()
+    print(cifar_labels)
 
-    cifar_example()
+    loaded_model = load_model("cifar_trial/example/keras_cifar_10")
+
+    predictions = loaded_model.predict(x_test)
+
+    analyser = BaseAnalyser()
+    analyser.conf_labeller(predictions, y_test, cifar_labels, "trolo", "example")
+
+    #cifar_example()
     #main()
     #model_function = sys.argv[1]
     #n_iterations = int(sys.argv[2])

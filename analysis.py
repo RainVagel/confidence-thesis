@@ -113,3 +113,23 @@ class BaseAnalyser:
             plt.title(key)
             plt.savefig('{}/{}_{}.png'.format(file_name, layers, key))
             plt.clf()
+
+    def conf_labeller(self, preds, true, labels, file_name, layers):
+        header = "prediction;prediction_confidence;true_label;true_label_confidence"
+        for label in labels:
+            header += ";{}_confidence".format(label, label)
+        with open(file_name + "/" + layers + ".csv", 'w', newline='') as myfile:
+            myfile.write(header)
+            myfile.write("\n")
+            for pred_index in range(len(preds)):
+                prediction = preds[pred_index]
+                pred_label_idx = np.argmax(preds[pred_index])
+                true_idx = np.where(true[pred_index] == 1.)[0][0]
+                myfile.write(labels[pred_label_idx])
+                myfile.write(";" + str(prediction[pred_label_idx]))
+                myfile.write(";" + labels[true_idx])
+                myfile.write(";" + str(prediction[true_idx]))
+                for pred_cycle_idx in range(len(prediction)):
+                    myfile.write(";" + str(prediction[pred_cycle_idx]))
+                myfile.write("\n")
+
