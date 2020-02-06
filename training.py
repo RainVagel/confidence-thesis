@@ -6,6 +6,7 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
+import tensorflow as tf
 
 from analysis import BaseAnalyser
 from dataset import MoonsDataset, CifarDataset
@@ -122,11 +123,46 @@ def cifar_example():
     analyser.plot_history(file_name, run_name, cifar_runner.get_history())
 
 
-if __name__ == "__main__":
-    #le = ResNetSmallRunner(mact=True)
+def paper_example():
     le = LeNetRunner(mact=True)
-    model = le.load_model(input_shape=(64, 64, 3), num_classes=6)
+    model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
     print(model.summary())
+
+    (X_train_orig, Y_train_orig), (X_test_orig, Y_test_orig) = tf.keras.datasets.mnist.load_data()
+
+    # Normalize image vectors
+    X_train = X_train_orig / 255.
+    X_test = X_test_orig / 255.
+
+    X_train = np.reshape(X_train, (60000, 28, 28, 1))
+    X_test = np.reshape(X_test, (10000, 28, 28, 1))
+
+    # Convert training and test labels to one hot matrices
+    Y_train = tf.keras.utils.to_categorical(Y_train_orig, 10)
+    Y_test = tf.keras.utils.to_categorical(Y_test_orig, 10)
+
+    print("number of training examples = " + str(X_train.shape[0]))
+    print("number of test examples = " + str(X_test.shape[0]))
+    print("X_train shape: " + str(X_train.shape))
+    print("Y_train shape: " + str(Y_train.shape))
+    print("X_test shape: " + str(X_test.shape))
+    print("Y_test shape: " + str(Y_test.shape))
+
+    model.fit(X_train, Y_train, epochs=25, batch_size=32)
+
+    preds = model.evaluate(X_test, Y_test)
+    print("Loss = " + str(preds[0]))
+    print("Test Accuracy = " + str(preds[1]))
+
+
+if __name__ == "__main__":
+    paper_example()
+    #le = ResNetSmallRunner(mact=True)
+    #le = LeNetRunner(mact=True)
+    #model = le.load_model(input_shape=(64, 64, 3), num_classes=6)
+    #print(model.summary())
 
     #model = create_tanh_model()
     #moons_dataset = MoonsDataset()
