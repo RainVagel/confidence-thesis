@@ -8,14 +8,14 @@ import tensorflow as tf
 from tensorflow.keras import initializers
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Layer, Add
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Input, AveragePooling2D
+from tensorflow.keras.layers import Conv2D, MaxPool2D, BatchNormalization, Input, AveragePooling2D
 from tensorflow.keras.optimizers import RMSprop, Adam
 from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import Callback
-from tensorflow.keras.backend import Constant
-from tensorflow.keras.initializers import TruncatedNormal
+from tensorflow.keras.backend import constant, bias_add
+from tensorflow.keras.initializers import TruncatedNormal, Constant
 
 from analysis import BaseAnalyser
 from sklearn.utils import shuffle
@@ -388,13 +388,8 @@ class CifarModelRunner(ModelRunner):
                                                     validation_data=(X_test, y_test), workers=workers, callbacks=[self.history])
 
 
-class ResNetSmallRunner(ModelRunner):
-
-    # Implemented based on the ResNetSmall model from https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
-
-    def __init__(self, model, file_name, run_name, iterations, dim, mact):
-        super().__init__(model, file_name, run_name, iterations, dim)
-        self.n_filters = [16, 16, 32, 64]
+class BasicModel():
+    def __init__(self, mact=True):
         self.mact = mact
 
     def _batch_norm(self, X):
@@ -420,34 +415,68 @@ class ResNetSmallRunner(ModelRunner):
             X = Activation('relu')(X)
 
         # Sub1
-        X = self._conv(X, filter_size=3, in_filters=in_filter, out_filters=out_filter, stride=stride)
+        X = self._conv(X, filter_size=3, out_filters=out_filter, stride=stride)
 
         # Sub2
         X = self._batch_norm(X)
         X = Activation('relu')(X)
-        X = self._conv(X, filter_size=3, in_filters=out_filter, out_filters=out_filter, stride=1)
+        X = self._conv(X, filter_size=3, out_filters=out_filter, stride=1)
 
         #Sub Add
         if in_filter != out_filter:
-            orig_X = AveragePooling2D(pool_size=(stride, stride), strides=(stride, stride),padding='valid')(orig_X)
-            orig_X = tf.pad(orig_X, [[0, 0], [0, 0], [0, 0],
-                                     [(out_filter - in_filter) // 2, (out_filter - in_filter) // 2]])
+            orig_X = AveragePooling2D(pool_size=(stride, stride), strides=(stride, stride), padding='valid')(orig_X)
         X = Add()([X, orig_X])
         return X
 
-    def _conv(self, X, filter_size, stride, in_filters, out_filters):
-        X = Conv2D(filter=filter_size, kernel_size=(filter_size, filter_size, in_filters, out_filters),
-                   strides=[1, stride, stride, 1], padding='same')(X)
+    def _conv(self, X, filter_size, stride, out_filters, biases=False):
+        if biases:
+            X = Conv2D(filters=filter_size, kernel_size=(out_filters, out_filters),
+                       strides=[stride, stride], padding='same', bias_initializer=Constant(0.0))(X)
+        else:
+            X = Conv2D(filters=filter_size, kernel_size=(filter_size, filter_size),
+                       strides=[stride, stride], padding='same')(X)
         return X
 
-    def load_model(self, input, flag_train, num_classes):
-        self.flag_train = flag_train
+    def _fc_layer(self, X, n_out, bn=False, last=False):
+        if len(X.shape) == 4:
+            n_in = int(X.shape[1]) * int(X.shape[2]) * int(X.shape[3])
+            X = Flatten()(X)
+        else:
+            n_in = int(X.shape[1])
+        X = Dense(n_out, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
+                  bias_initializer=Constant(0.0))(X)
+        X = self._batch_norm(X) if bn else X
+        if not last:
+            X = Activation('relu')(X)
+        else:
+            if self.mact:
+                X = MActAbs()(X)
+            else:
+                X = Activation('softmax')
+        return X
+
+    def _conv_layer(self, X, size, n_out, stride, bn=False, biases=True):
+        X = self._conv(X, size, stride, n_out, biases=biases)
+        X = self._batch_norm(X) if bn else X
+        X = Activation('relu')(X)
+        return X
+
+
+class ResNetSmallRunner(BasicModel):
+
+    # Implemented based on the ResNetSmall model from https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
+
+    def __init__(self, mact):
+        super().__init__(mact)
+        self.n_filters = [16, 16, 32, 64]
+
+    def load_model(self, input_shape, num_classes):
         strides = [1, 1, 2, 2]
         activate_before_residual = [True, False, False]
         n_resid_units = [0, 3, 3, 3]
 
-        X = Input(input.shape)
-        X = self._conv(X, filter_size=3, in_filters=int(input.shape[-1]), out_filters=self.n_filters[0],
+        X_input = Input(input_shape)
+        X = self._conv(X_input, filter_size=3, out_filters=self.n_filters[0],
                        stride=strides[0])
         for i in range(1, len(n_resid_units)):
             X = self._residual(X, self.n_filters[i-1], self.n_filters[i], strides[i], activate_before_residual[0])
@@ -460,54 +489,71 @@ class ResNetSmallRunner(ModelRunner):
         X = self._global_avg_pool(X)
 
         # Logit
-        X = Flatten()(X)
-        n_in = int(input.shape[1]) * int(input.shape[2]) * int(input.shape[3])
-        X = Dense(num_classes, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
-                  bias_initializer=Constant(0.0))(X)
+        X = self._fc_layer(X, num_classes, last=True)
+        #X = Flatten()(X)
+        #n_in = int(input_shape[1]) * int(input_shape[2]) * int(input_shape[3])
+        #X = Dense(num_classes, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
+        #          bias_initializer=constant(0.0))(X)
 
-        if self.mact:
-            X = MActAbs()(X)
-        else:
-            X = Activation('softmax')(X)
-        return X
+        #if self.mact:
+        #    X = MActAbs()(X)
+        #else:
+        #    X = Activation('softmax')(X)
+
+        model = Model(inputs=X_input, outputs=X, name="ResNetSmall")
+        return model
 
 
-class LeNetRunner(ModelRunner):
+class LeNetRunner(BasicModel):
 
-    # Based on LeNet from here: https://github.com/MadryLab/mnist_challenge/blob/master/model.py
+    # Based on LeNet from here: https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
 
-    def __init__(self, model, file_name, run_name, iterations, dim, mact):
-        super().__init__(model, file_name, run_name, iterations, dim)
-        self.mact = mact
+    def __init__(self, mact):
+        super().__init__(mact)
+        self.strides = [1, 1]
+        self.n_filters = [32, 64]
+        self.n_fc = [1024]
 
-    def load_model(self, x_train, num_classes):
-        self.model = Sequential()
+    def load_model(self, input_shape, num_classes):
+        bn = False
+        X_input = Input(input_shape)
+        X = self._conv_layer(X_input, 5, self.n_filters[0], self.strides[0], bn=bn, biases=not bn)
+        X = MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='same')(X)
+        X = self._conv_layer(X, 5, self.n_filters[1], self.strides[1], bn=bn, biases=not bn)
+        X = MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='same')(X)
+        X = self._fc_layer(X, self.n_fc[0])
+        X = self._fc_layer(X, num_classes, last=True)
+
+        model = Model(inputs=X_input, outputs=X, name="LeNet")
+        return model
+
+        #self.model = Sequential()
         # First conv layer
-        self.model.add(Conv2D(32, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
-                              bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same',
-                              input_size=x_train.shape[1:]))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        #self.model.add(Conv2D(32, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
+        #                      bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same',
+        #                      input_size=x_train.shape[1:]))
+        #self.model.add(Activation('relu'))
+        #self.model.add(MaxPooling2D(pool_size=(2, 2)))
 
         # Second conv layer
-        self.model.add(Conv2D(64, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
-                              bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same'))
-        self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        #self.model.add(Conv2D(64, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
+        #                      bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same'))
+        #self.model.add(Activation('relu'))
+        #self.model.add(MaxPooling2D(pool_size=(2, 2)))
 
         # First Dense layer
-        self.model.add(Dense(1024, kernel_initializer=TruncatedNormal(stddev=0.1),
-                             bias_initializer=Constant(value=0.1)))
-        self.model.add(Flatten())
-        self.model.add(Activation('relu'))
+        #self.model.add(Dense(1024, kernel_initializer=TruncatedNormal(stddev=0.1),
+        #                     bias_initializer=Constant(value=0.1)))
+        #self.model.add(Flatten())
+        #self.model.add(Activation('relu'))
 
         #Output layer
-        self.model.add(Dense(num_classes, kernel_initializer=TruncatedNormal(stddev=0.1),
-                             bias_initializer=Constant(value=0.1)))
-        if self.mact:
-            self.model.add(MActAbs())
-        else:
-            self.model.add(Activation('softmax'))
+        #self.model.add(Dense(num_classes, kernel_initializer=TruncatedNormal(stddev=0.1),
+        #                     bias_initializer=Constant(value=0.1)))
+        #if self.mact:
+        #    self.model.add(MActAbs())
+        #else:
+        #    self.model.add(Activation('softmax'))
 
     def compile_model(self, opt, loss='sparse_categorical_crossentropy', metrics='accuracy'):
         self.model.compile(loss=loss,

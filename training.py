@@ -9,7 +9,7 @@ from tensorflow.keras.models import load_model
 
 from analysis import BaseAnalyser
 from dataset import MoonsDataset, CifarDataset
-from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner
+from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
 
 
 def create_relu_model():
@@ -123,6 +123,11 @@ def cifar_example():
 
 
 if __name__ == "__main__":
+    #le = ResNetSmallRunner(mact=True)
+    le = LeNetRunner(mact=True)
+    model = le.load_model(input_shape=(64, 64, 3), num_classes=6)
+    print(model.summary())
+
     #model = create_tanh_model()
     #moons_dataset = MoonsDataset()
     #X, y, X_test, y_test = moons_dataset.four_set_two_moons(n_samples=1000)
@@ -132,18 +137,18 @@ if __name__ == "__main__":
     #print(history.history)
 
     # Create the Cifar dataset class
-    cifar_data = CifarDataset()
+    #cifar_data = CifarDataset()
     # Load the cifar-10 dataset
-    x_train, y_train, x_test, y_test = cifar_data.load_dataset()
-    cifar_labels = cifar_data.load_label_names()
-    print(cifar_labels)
+    #x_train, y_train, x_test, y_test = cifar_data.load_dataset()
+    #cifar_labels = cifar_data.load_label_names()
+    #print(cifar_labels)
 
-    loaded_model = load_model("cifar_trial/example/keras_cifar_10")
+    #loaded_model = load_model("cifar_trial/example/keras_cifar_10")
 
-    predictions = loaded_model.predict(x_test)
+    #predictions = loaded_model.predict(x_test)
 
-    analyser = BaseAnalyser()
-    analyser.conf_labeller(predictions, y_test, cifar_labels, "trolo", "example")
+    #analyser = BaseAnalyser()
+    #analyser.conf_labeller(predictions, y_test, cifar_labels, "trolo", "example")
 
     #cifar_example()
     #main()
