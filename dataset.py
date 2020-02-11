@@ -100,3 +100,18 @@ class CifarDataset:
             return ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
         else:
             raise Exception("Unsupported CIFAR version for labels: {}".format(self.cifar_version))
+
+
+class MnistDataset:
+    def load_dataset(self):
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+        y_train = tf.keras.utils.to_categorical(y_train, 10)
+        y_test = tf.keras.utils.to_categorical(y_test, 10)
+
+        X_train = x_train / 255.
+        X_test = x_test / 255.
+
+        x_train = np.reshape(X_train, (60000, 28, 28, 1))
+        x_test = np.reshape(X_test, (10000, 28, 28, 1))
+
+        return x_train, y_train, x_test, y_test

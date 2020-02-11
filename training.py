@@ -6,10 +6,11 @@ from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
+from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 import tensorflow as tf
 
 from analysis import BaseAnalyser
-from dataset import MoonsDataset, CifarDataset
+from dataset import MoonsDataset, CifarDataset, MnistDataset
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
 
 
@@ -157,8 +158,44 @@ def paper_example():
     print("Test Accuracy = " + str(preds[1]))
 
 
+def mnist_train():
+    x_train, y_train, x_test, y_test = MnistDataset().load_dataset()
+    lr = 0.001
+    batch_size = 128
+    n_epochs = 100
+
+    # Learning rate scheduler based on the code from the article
+    n_iter_per_epoch = x_train.shape[0] // batch_size
+    decay1 = round(0.5 * n_iter_per_epoch * n_epochs)
+    decay2 = round(0.75 * n_iter_per_epoch * n_epochs)
+    decay3 = round(0.90 * n_iter_per_epoch * n_epochs)
+    lr_decay_n_updates = [decay1, decay2, decay3]
+    lr_decay_coefs = [lr, lr / 10, lr / 100, lr / 1000]
+
+    step = tf.Variable(0, trainable=False)
+    #boundaries = [50, 75, 90]
+    #values = [0.001, 0.0001, 0.00001, 0.000001]
+    learning_rate_fn = PiecewiseConstantDecay(
+        lr_decay_n_updates, lr_decay_coefs)
+
+    # Later, whenever we perform an optimization step, we pass in the step.
+    learning_rate = learning_rate_fn(step)
+
+    le = LeNetRunner(mact=True)
+    model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
+    optimizer = Adam(learning_rate)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    model.fit(x_train, y_train, epochs=100, batch_size=batch_size)
+
+    preds = model.evaluate(x_test, y_test)
+    print("Loss = " + str(preds[0]))
+    print("Test Accuracy = " + str(preds[1]))
+
+
 if __name__ == "__main__":
-    paper_example()
+    mnist_train()
+    #paper_example()
     #le = ResNetSmallRunner(mact=True)
     #le = LeNetRunner(mact=True)
     #model = le.load_model(input_shape=(64, 64, 3), num_classes=6)
@@ -183,8 +220,13 @@ if __name__ == "__main__":
 
     #predictions = loaded_model.predict(x_test)
 
+    #x_test = x_test[:10]
+
+
     #analyser = BaseAnalyser()
-    #analyser.conf_labeller(predictions, y_test, cifar_labels, "trolo", "example")
+    #print(analyser.mean_max_conf(loaded_model, x_test))
+
+    #print(analyser._tru(y_test))
 
     #cifar_example()
     #main()

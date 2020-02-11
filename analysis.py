@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import tensorflow as tf
 from tensorflow.keras import backend as K
+from sklearn.metrics import roc_auc_score, roc_curve
 
 
 class BaseAnalyser:
@@ -133,3 +134,28 @@ class BaseAnalyser:
                     myfile.write(";" + str(prediction[pred_cycle_idx]))
                 myfile.write("\n")
 
+    def _max_conf(self, preds):
+        return np.max(preds, axis=1)
+
+    def _tru(self, a):
+        return np.isin(a[:, 0], [0, 1])
+
+    def roc(self, true_set, conf_set, true_clean, conf_clean):
+        tru_with_clean = np.concatenate([true_set, true_clean])
+        conf_with_clean = np.concatenate([conf_set, conf_clean])
+        return roc_curve(tru_with_clean, conf_with_clean, pos_label=True), roc_auc_score(tru_with_clean, conf_with_clean)
+
+    def mean_max_conf(self, model, x_test):
+        preds = model(x_test)
+        count = len(x_test)
+        sum = 0
+        for pred in preds:
+            sum += float(pred[np.argmax(pred)])
+        return round(sum / count, 2)
+
+    def fpr_at_95_tpr(self, conf_t, conf_f):
+        TPR = 95
+        PERC = np.percentile(conf_t, 100-TPR)
+        FP = np.sum(conf_f >= PERC)
+        FPR = np.sum(conf_f >= PERC) / len(conf_f)
+        return FPR, PERC
