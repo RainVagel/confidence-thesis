@@ -192,9 +192,14 @@ def mnist_train():
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
 
+def trials():
+    x_train, y_train, x_test, y_test = MnistDataset().load_dataset()
+    print(x_train[0])
+
 
 if __name__ == "__main__":
-    mnist_train()
+    trials()
+    #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)
     #le = LeNetRunner(mact=True)

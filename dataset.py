@@ -1,6 +1,31 @@
 import numpy as np
 from sklearn import datasets
 import tensorflow as tf
+import random
+import emnist
+
+
+class Dataset:
+    def __init__(self, aug=True):
+        self.aug = aug
+
+    def load_dataset(self):
+        pass
+
+
+def get_cut_parameters(image_x, image_y, output_x, output_y):
+    if image_x == output_x and image_y == output_y:
+        return 0, 0, image_x, image_y
+
+    i = random.randint(0, image_x - output_x)
+    j = random.randint(0, image_y - output_y)
+
+    return i, j, output_x, output_y
+
+
+def crop_image(img, image_x, image_y, output_x, output_y):
+    i, j, h, w = get_cut_parameters(image_x, image_y, output_x, output_y)
+    return tf.image.crop_to_bounding_box(img, i, j, h, w)
 
 
 class MoonsDataset:
@@ -102,7 +127,14 @@ class CifarDataset:
             raise Exception("Unsupported CIFAR version for labels: {}".format(self.cifar_version))
 
 
-class MnistDataset:
+class MnistDataset(Dataset):
+
+    def __init__(self, aug=True):
+        super().__init__(aug)
+        self.n_train, self.n_test = 60000, 10000
+        self.height, self.width, self.n_colors = 28, 28, 1
+        self.n_classes = 10
+
     def load_dataset(self):
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         y_train = tf.keras.utils.to_categorical(y_train, 10)
@@ -111,7 +143,67 @@ class MnistDataset:
         X_train = x_train / 255.
         X_test = x_test / 255.
 
-        x_train = np.reshape(X_train, (60000, 28, 28, 1))
-        x_test = np.reshape(X_test, (10000, 28, 28, 1))
+        X_train = np.reshape(X_train, (self.n_train, self.height, self.width, self.n_colors))
+        X_test = np.reshape(X_test, (self.n_test, self.height, self.width, self.n_colors))
 
-        return x_train, y_train, x_test, y_test
+        if self.aug:
+            X_train = tf.map_fn(lambda x: tf.cast(tf.image.resize_with_pad(x, self.height + 8, self.width + 8),
+                                                  dtype=tf.float64), X_train, dtype=tf.float64)
+            X_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+                                X_train, dtype=tf.float64)
+
+        return X_train, y_train, X_test, y_test
+
+
+class FMnistDataset(Dataset):
+    def __init__(self, aug=True):
+        super().__init__(aug)
+        self.n_train, self.n_test = 60000, 10000
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 28, 28, 1
+
+    def load_dataset(self):
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
+        y_train = tf.keras.utils.to_categorical(y_train, 10)
+        y_test = tf.keras.utils.to_categorical(y_test, 10)
+
+        X_train = x_train / 255.
+        X_test = x_test / 255.
+
+        X_train = np.reshape(X_train, (self.n_train, self.height, self.width, self.n_colors))
+        X_test = np.reshape(X_test, (self.n_test, self.height, self.width, self.n_colors))
+
+        if self.aug:
+            X_train = tf.map_fn(lambda x: tf.cast(tf.image.resize_with_pad(x, self.height + 8, self.width + 8),
+                                                  dtype=tf.float64), X_train, dtype=tf.float64)
+            X_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+                                X_train, dtype=tf.float64)
+
+        return X_train, y_train, X_test, y_test
+
+class EMnistDataset(Dataset):
+    def __init__(self, aug=True):
+        super().__init__(aug)
+        self.n_train, self.n_test = 88800, 14800
+        self.n_classes = 37
+        self.height, self.width, self.n_colors = 28, 28, 1
+
+    def load_dataset(self):
+        x_train, y_train = emnist.extract_training_samples('letters')
+        x_test, y_test = emnist.extract_test_samples('letters')
+        y_train = tf.keras.utils.to_categorical(y_train, 10)
+        y_test = tf.keras.utils.to_categorical(y_test, 10)
+
+        X_train = x_train / 255.
+        X_test = x_test / 255.
+
+        X_train = np.reshape(X_train, (self.n_train, self.height, self.width, self.n_colors))
+        X_test = np.reshape(X_test, (self.n_test, self.height, self.width, self.n_colors))
+
+        if self.aug:
+            X_train = tf.map_fn(lambda x: tf.cast(tf.image.resize_with_pad(x, self.height + 8, self.width + 8),
+                                                  dtype=tf.float64), X_train, dtype=tf.float64)
+            X_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+                                X_train, dtype=tf.float64)
+
+        return X_train, y_train, X_test, y_test
