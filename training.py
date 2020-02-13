@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 import tensorflow as tf
 
 from analysis import BaseAnalyser
-from dataset import MoonsDataset, CifarDataset, MnistDataset
+from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
 
 
@@ -193,7 +193,8 @@ def mnist_train():
     print("Test Accuracy = " + str(preds[1]))
 
 def trials():
-    x_train, y_train, x_test, y_test = MnistDataset().load_dataset()
+    x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
+    #x_train, y_train, x_test, y_test = EMnistDataset().load_dataset()
     print(x_train[0])
 
 
