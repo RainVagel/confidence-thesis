@@ -58,7 +58,7 @@ def main():
 
     Path(file_name).mkdir(parents=True, exist_ok=True)
     print("Creating model!")
-    #model = create_model()
+    model = create_model()
     print("Model created!")
     runner = MActModelRunner(model, file_name, run_name, iterations=1000, dim=2)
     optimizer = Adam(learning_rate=0.01)
@@ -192,14 +192,53 @@ def mnist_train():
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
 
+
 def trials():
     x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
     #x_train, y_train, x_test, y_test = EMnistDataset().load_dataset()
     print(x_train[0])
 
 
+def paper_svhn_train():
+    folder_creater('paper_trial')
+    x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
+    lr = 0.001
+    batch_size = 128
+    n_epochs = 100
+
+    # Learning rate scheduler based on the code from the article
+    n_iter_per_epoch = x_train.shape[0] // batch_size
+    decay1 = round(0.5 * n_iter_per_epoch * n_epochs)
+    decay2 = round(0.75 * n_iter_per_epoch * n_epochs)
+    decay3 = round(0.90 * n_iter_per_epoch * n_epochs)
+    lr_decay_n_updates = [decay1, decay2, decay3]
+    lr_decay_coefs = [lr, lr / 10, lr / 100, lr / 1000]
+
+    step = tf.Variable(0, trainable=False)
+    # boundaries = [50, 75, 90]
+    # values = [0.001, 0.0001, 0.00001, 0.000001]
+    learning_rate_fn = PiecewiseConstantDecay(
+        lr_decay_n_updates, lr_decay_coefs)
+
+    # Later, whenever we perform an optimization step, we pass in the step.
+    learning_rate = learning_rate_fn(step)
+
+    le = LeNetRunner(mact=True)
+    model = le.load_model(input_shape=(32, 32, 3), num_classes=10)
+    optimizer = Adam(learning_rate)
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    model.fit(x_train, y_train, epochs=n_epochs, batch_size=batch_size)
+
+    le.save_model(model, 'paper_trial', 'paper_svhn')
+
+    preds = model.evaluate(x_test, y_test)
+    print("Loss = " + str(preds[0]))
+    print("Test Accuracy = " + str(preds[1]))
+
+
 if __name__ == "__main__":
-    trials()
+    paper_svhn_train()
     #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)

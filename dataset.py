@@ -261,6 +261,11 @@ class EMnistDataset(Dataset):
 
 class SVHNDataset(Dataset):
 
+    """
+    training file link: http://ufldl.stanford.edu/housenumbers/train_32x32.mat
+    testing file link: http://ufldl.stanford.edu/housenumbers/test_32x32.mat
+    """
+
     def __init__(self, aug=True):
         super().__init__(aug)
         self.n_train, self.n_test = 73257, 26032

@@ -312,14 +312,14 @@ class CifarModelRunner(ModelRunner):
         self.model.add(Activation('relu'))
         self.model.add(Conv2D(32, (3, 3)))
         self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(MaxPool2D(pool_size=(2, 2)))
         self.model.add(Dropout(0.25))
 
         self.model.add(Conv2D(64, (3, 3), padding='same'))
         self.model.add(Activation('relu'))
         self.model.add(Conv2D(64, (3, 3)))
         self.model.add(Activation('relu'))
-        self.model.add(MaxPooling2D(pool_size=(2, 2)))
+        self.model.add(MaxPool2D(pool_size=(2, 2)))
         self.model.add(Dropout(0.25))
 
         self.model.add(Flatten())
@@ -389,8 +389,17 @@ class CifarModelRunner(ModelRunner):
 
 
 class BasicModel():
-    def __init__(self, mact=True):
+    def __init__(self, file_name=None, run_name=None, mact=True):
         self.mact = mact
+        self.file_name = file_name
+        self.run_name = run_name
+
+    def save_model(self, model, folder_name=None, file_name=None):
+        if folder_name is None:
+            folder_name = self.file_name
+        if file_name is None:
+            file_name = self.run_name
+        model.save(folder_name + "/" + file_name)
 
     def _batch_norm(self, X):
         X = BatchNormalization(momentum=0.99, epsilon=1e-5, center=True, scale=True)(X)
@@ -554,12 +563,4 @@ class LeNetRunner(BasicModel):
         #    self.model.add(MActAbs())
         #else:
         #    self.model.add(Activation('softmax'))
-
-    def compile_model(self, opt, loss='sparse_categorical_crossentropy', metrics='accuracy'):
-        self.model.compile(loss=loss,
-                           optimizer=opt,
-                           metrics=[metrics])
-
-    def get_default_optimizer(self):
-        return Adam(learning_rate=1e-4)
 
