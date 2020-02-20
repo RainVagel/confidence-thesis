@@ -199,9 +199,37 @@ def trials():
     print(x_train[0])
 
 
-def paper_svhn_train():
+def paper_train(dataset, model):
+    print("Creating file")
     folder_creater('paper_trial')
-    x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
+    print("File created")
+
+    print("Loading model")
+    if model == 'resnet':
+        runner = ResNetSmallRunner(mact=True)
+    elif model == 'lenet':
+        runner = LeNetRunner(mact=True)
+    else:
+        raise Exception('Unsupported model')
+    print("Model loaded")
+
+    print("Loading dataset")
+    if dataset == 'SVHN':
+        x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
+        model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
+    elif dataset == 'MNIST':
+        x_train, y_train, x_test, y_test = MnistDataset().load_dataset()
+        model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
+    elif dataset == 'CIFAR10':
+        x_train, y_train, x_test, y_test = CifarDataset().load_dataset()
+        model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
+    elif dataset == 'CIFAR100':
+        x_train, y_train, x_test, y_test = CifarDataset(cifar_version=100).load_dataset()
+        model = runner.load_model(input_shape=(32, 32, 3), num_classes=100)
+    else:
+        raise Exception('Unsupported dataset for training')
+    print("Dataset loaded")
+
     lr = 0.001
     batch_size = 128
     n_epochs = 100
@@ -223,22 +251,27 @@ def paper_svhn_train():
     # Later, whenever we perform an optimization step, we pass in the step.
     learning_rate = learning_rate_fn(step)
 
-    le = LeNetRunner(mact=True)
-    model = le.load_model(input_shape=(32, 32, 3), num_classes=10)
     optimizer = Adam(learning_rate)
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
+    print("STarting training")
     model.fit(x_train, y_train, epochs=n_epochs, batch_size=batch_size)
+    print("Model trained")
 
-    le.save_model(model, 'paper_trial', 'paper_svhn')
+    print("Saving model")
+    runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model))
+    print("Model saved")
 
+    print("Evaluating model")
     preds = model.evaluate(x_test, y_test)
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
 
 
 if __name__ == "__main__":
-    paper_svhn_train()
+    dataset_inp = sys.argv[1]
+    model_inp = sys.argv[2]
+    paper_train(dataset_inp, model_inp)
     #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)
