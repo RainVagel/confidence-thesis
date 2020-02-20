@@ -198,7 +198,7 @@ class MnistDataset(Dataset):
         if self.aug:
             x_train = tf.image.resize_with_pad(X_train, self.height + 8, self.width + 8)
             x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float64)
+                                x_train)
 
         return x_train, y_train, X_test, y_test
 
@@ -224,7 +224,7 @@ class FMnistDataset(Dataset):
         if self.aug:
             x_train = tf.image.resize_with_pad(X_train, self.height + 8, self.width + 8)
             x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float64)
+                                x_train)
 
         return x_train, y_train, X_test, y_test
 
