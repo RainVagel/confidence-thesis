@@ -7,17 +7,17 @@
 #done
 
 echo 'Start training resnet on SVHN'
-python training.py 'SVHN' 'resnet'
+python training.py 'SVHN' 'resnet' 'True'
 echo 'SVHN resnet trained'
 
 echo 'Start training resnet on cifar10'
-python training.py 'CIFAR10' 'resnet'
+python training.py 'CIFAR10' 'resnet' 'True'
 echo 'CIFAR10 resent trained'
 
 echo 'STart training resnet on cifar100'
-python training.py 'CIFAR100' 'resnet'
+python training.py 'CIFAR100' 'resnet' 'True'
 echo 'CIFAR100 resnet trained'
 
 echo 'Start training LeNet on MNIST'
-python training.py 'MNIST' 'lenet'
+python training.py 'MNIST' 'lenet' 'True'
 echo 'MNIST LeNet trained'

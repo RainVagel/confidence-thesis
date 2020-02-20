@@ -199,16 +199,16 @@ def trials():
     print(x_train[0])
 
 
-def paper_train(dataset, model):
+def paper_train(dataset, model, mact=True):
     print("Creating file")
     folder_creater('paper_trial')
     print("File created")
 
     print("Loading model")
     if model == 'resnet':
-        runner = ResNetSmallRunner(mact=True)
+        runner = ResNetSmallRunner(mact=mact)
     elif model == 'lenet':
-        runner = LeNetRunner(mact=True)
+        runner = LeNetRunner(mact=mact)
     else:
         raise Exception('Unsupported model')
     print("Model loaded")
@@ -271,7 +271,8 @@ def paper_train(dataset, model):
 if __name__ == "__main__":
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
-    paper_train(dataset_inp, model_inp)
+    mact_inp = bool(sys.argv[3])
+    paper_train(dataset_inp, model_inp, mact_inp)
     #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)
