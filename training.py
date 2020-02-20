@@ -199,7 +199,7 @@ def trials():
     print(x_train[0])
 
 
-def paper_train(dataset, model, mact=True):
+def paper_train(dataset, model, name=None, mact=True):
     print("Creating file")
     folder_creater('paper_trial')
     print("File created")
@@ -259,7 +259,10 @@ def paper_train(dataset, model, mact=True):
     print("Model trained")
 
     print("Saving model")
-    runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model))
+    if name is None:
+        runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model))
+    else:
+        runner.save_model(model, 'paper_trial', 'paper_{}_{}_{}'.format(dataset, model, name))
     print("Model saved")
 
     print("Evaluating model")
@@ -272,7 +275,11 @@ if __name__ == "__main__":
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
     mact_inp = bool(sys.argv[3])
-    paper_train(dataset_inp, model_inp, mact_inp)
+    try:
+        name_inp = sys.argv[4]
+    except Exception:
+        name_inp = None
+    paper_train(dataset_inp, model_inp, name_inp, mact_inp)
     #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)
