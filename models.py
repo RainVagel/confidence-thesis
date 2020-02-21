@@ -434,15 +434,17 @@ class BasicModel():
         #Sub Add
         if in_filter != out_filter:
             orig_X = AveragePooling2D(pool_size=(stride, stride), strides=(stride, stride), padding='valid')(orig_X)
+            orig_X = tf.pad(orig_X, [[0, 0], [0, 0], [0, 0],
+                                     [(out_filter - in_filter) // 2, (out_filter - in_filter) // 2]])
         X = Add()([X, orig_X])
         return X
 
     def _conv(self, X, filter_size, stride, out_filters, biases=False):
         if biases:
-            X = Conv2D(filters=filter_size, kernel_size=(out_filters, out_filters),
+            X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
                        strides=[stride, stride], padding='same', bias_initializer=Constant(0.0))(X)
         else:
-            X = Conv2D(filters=filter_size, kernel_size=(filter_size, filter_size),
+            X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
                        strides=[stride, stride], padding='same')(X)
         return X
 

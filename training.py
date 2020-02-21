@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 import tensorflow as tf
 
 from analysis import BaseAnalyser
-from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset
+from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, FMnistDataset
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
 
 
@@ -271,7 +271,22 @@ def paper_train(dataset, model_name, name=None, mact=True):
     print("Test Accuracy = " + str(preds[1]))
 
 
+def saved_model_tests(model_name, dataset):
+    loaded_model = load_model(model_name)
+    datasets = {}
+    if dataset.upper() == 'MNIST':
+        for data in [MnistDataset(aug=False), FMnistDataset(aug=False), EMnistDataset(aug=False),
+                     Cifar10GrayScale(aug=False)]:
+            datasets[data.__class__.__name__] = data.load_dataset()
+    print(datasets.keys())
+
+
 if __name__ == "__main__":
+    # le = ResNetSmallRunner(mact=True)
+    # le = LeNetRunner(mact=True)
+    # model = le.load_model(input_shape=(32, 32, 3), num_classes=10)
+    # print(model.summary())
+    #saved_model_tests("paper_trial/")
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
     mact_inp = bool(sys.argv[3])
@@ -280,6 +295,7 @@ if __name__ == "__main__":
     except Exception:
         name_inp = None
     paper_train(dataset_inp, model_inp, name_inp, mact_inp)
+
     #mnist_train()
     #paper_example()
     #le = ResNetSmallRunner(mact=True)
