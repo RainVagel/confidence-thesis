@@ -1,0 +1,12 @@
+emnist==0.0
+h5py==2.10.0
+Keras==2.2.4
+Keras-Applications==1.0.8
+Keras-Preprocessing==1.1.0
+matplotlib==2.2.4
+numpy==1.17.4
+scikit-learn==0.21.3
+scipy==1.4.1
+tensorboard==2.0.0
+tensorflow==2.0.0
+tensorflow-estimator==2.0.0
