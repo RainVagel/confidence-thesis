@@ -199,15 +199,15 @@ def trials():
     print(x_train[0])
 
 
-def paper_train(dataset, model, name=None, mact=True):
+def paper_train(dataset, model_name, name=None, mact=True):
     print("Creating file")
     folder_creater('paper_trial')
     print("File created")
 
     print("Loading model")
-    if model == 'resnet':
+    if model_name == 'resnet':
         runner = ResNetSmallRunner(mact=mact)
-    elif model == 'lenet':
+    elif model_name == 'lenet':
         runner = LeNetRunner(mact=mact)
     else:
         raise Exception('Unsupported model')
@@ -260,9 +260,9 @@ def paper_train(dataset, model, name=None, mact=True):
 
     print("Saving model")
     if name is None:
-        runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model))
+        runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model_name))
     else:
-        runner.save_model(model, 'paper_trial', 'paper_{}_{}_{}'.format(dataset, model, name))
+        runner.save_model(model, 'paper_trial', 'paper_{}_{}_{}'.format(dataset, model_name, name))
     print("Model saved")
 
     print("Evaluating model")
