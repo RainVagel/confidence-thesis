@@ -265,9 +265,9 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
 
     print("Saving model")
     if name is None:
-        runner.save_model(model, 'paper_trial', 'paper_{}_{}'.format(dataset, model_name))
+        runner.save_model(model, folder_name, 'paper_{}_{}'.format(dataset, model_name))
     else:
-        runner.save_model(model, 'paper_trial', 'paper_{}_{}_{}'.format(dataset, model_name, name))
+        runner.save_model(model, folder_name, 'paper_{}_{}_{}'.format(dataset, model_name, name))
     print("Model saved")
 
     print("Evaluating model")
