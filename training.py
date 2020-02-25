@@ -4,7 +4,7 @@ import numpy as np
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
 import tensorflow as tf
@@ -199,9 +199,9 @@ def trials():
     print(x_train[0])
 
 
-def paper_train(dataset, model_name, name=None, mact=True):
+def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     print("Creating file")
-    folder_creater('paper_trial')
+    folder_creater(folder_name)
     print("File created")
 
     print("Loading model")
@@ -250,8 +250,13 @@ def paper_train(dataset, model_name, name=None, mact=True):
 
     # Later, whenever we perform an optimization step, we pass in the step.
     learning_rate = learning_rate_fn(step)
+    if dataset == 'MNIST':
+        optimizer = Adam(learning_rate)
+    elif dataset in ('SVHN', 'CIFAR10', 'CIFAR100'):
+        optimizer = SGD(learning_rate, momentum=0.9)
+    else:
+        raise Exception("Unsupported dataset for training!")
 
-    optimizer = Adam(learning_rate)
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
     print("STarting training")
@@ -289,12 +294,13 @@ if __name__ == "__main__":
     #saved_model_tests("paper_trial/")
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
-    mact_inp = bool(sys.argv[3])
+    folder_name = sys.argv[3]
+    mact_inp = bool(sys.argv[4])
     try:
-        name_inp = sys.argv[4]
+        name_inp = sys.argv[5]
     except Exception:
         name_inp = None
-    paper_train(dataset_inp, model_inp, name_inp, mact_inp)
+    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
     #paper_example()
