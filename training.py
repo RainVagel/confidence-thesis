@@ -7,6 +7,7 @@ from tensorflow.keras.layers import Dense, Activation
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers.schedules import PiecewiseConstantDecay
+from tensorflow.keras.callbacks import LearningRateScheduler
 import tensorflow as tf
 
 from analysis import BaseAnalyser
@@ -199,6 +200,17 @@ def trials():
     print(x_train[0])
 
 
+def scheduler(epoch, lr):
+    if epoch < 50:
+        return lr
+    elif 50 <= epoch < 75:
+        return lr / 10
+    elif 75 <= epoch < 90:
+        return lr / 10
+    elif 90 <= epoch < 101:
+        return lr / 10
+
+
 def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     print("Creating file")
     folder_creater(folder_name)
@@ -230,37 +242,47 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
         raise Exception('Unsupported dataset for training')
     print("Dataset loaded")
 
-    lr = 0.001
+    if dataset == 'MNIST':
+        lr = 0.001
+    elif dataset in ('SVHN', 'CIFAR10', 'CIFAR100'):
+        lr = 0.1
+    else:
+        raise Exception("Unsupported dataset for training!")
+
     batch_size = 128
     n_epochs = 100
 
     # Learning rate scheduler based on the code from the article
-    n_iter_per_epoch = x_train.shape[0] // batch_size
-    decay1 = round(0.5 * n_iter_per_epoch * n_epochs)
-    decay2 = round(0.75 * n_iter_per_epoch * n_epochs)
-    decay3 = round(0.90 * n_iter_per_epoch * n_epochs)
-    lr_decay_n_updates = [decay1, decay2, decay3]
-    lr_decay_coefs = [lr, lr / 10, lr / 100, lr / 1000]
+    #n_iter_per_epoch = x_train.shape[0] // batch_size
+    #decay1 = round(0.5 * n_iter_per_epoch * n_epochs)
+    #decay2 = round(0.75 * n_iter_per_epoch * n_epochs)
+    #decay3 = round(0.90 * n_iter_per_epoch * n_epochs)
+    #lr_decay_n_updates = [decay1, decay2, decay3]
+    #lr_decay_coefs = [lr, lr / 10, lr / 100, lr / 1000]
 
-    step = tf.Variable(0, trainable=False)
+    #step = tf.Variable(0, trainable=False)
     # boundaries = [50, 75, 90]
     # values = [0.001, 0.0001, 0.00001, 0.000001]
-    learning_rate_fn = PiecewiseConstantDecay(
-        lr_decay_n_updates, lr_decay_coefs)
+    #learning_rate_fn = PiecewiseConstantDecay(
+    #    lr_decay_n_updates, lr_decay_coefs)
 
     # Later, whenever we perform an optimization step, we pass in the step.
-    learning_rate = learning_rate_fn(step)
+    #learning_rate = learning_rate_fn(step)
     if dataset == 'MNIST':
-        optimizer = Adam(learning_rate)
+        optimizer = Adam(lr)
     elif dataset in ('SVHN', 'CIFAR10', 'CIFAR100'):
-        optimizer = SGD(learning_rate, momentum=0.9)
+        optimizer = SGD(lr, momentum=0.9)
     else:
         raise Exception("Unsupported dataset for training!")
 
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
+    callbacks = [
+        LearningRateScheduler(scheduler, verbose=1)
+    ]
+
     print("STarting training")
-    model.fit(x_train, y_train, epochs=n_epochs, batch_size=batch_size)
+    model.fit(x_train, y_train, epochs=n_epochs, batch_size=batch_size, callbacks=callbacks)
     print("Model trained")
 
     print("Saving model")
@@ -291,15 +313,17 @@ if __name__ == "__main__":
      #le = ResNetSmallRunner(mact=True)
      #model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
      #print(model.summary())
-    #saved_model_tests("paper_trial/")
-    dataset_inp = sys.argv[1]
-    model_inp = sys.argv[2]
-    folder_name = sys.argv[3]
-    mact_inp = bool(sys.argv[4])
-    try:
-        name_inp = sys.argv[5]
-    except Exception:
-        name_inp = None
+     saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
+     print(saved_model.optimizer.get_config())
+
+    #dataset_inp = sys.argv[1]
+    #model_inp = sys.argv[2]
+    #folder_name = sys.argv[3]
+    #mact_inp = bool(sys.argv[4])
+    #try:
+    #    name_inp = sys.argv[5]
+    #except Exception:
+    #    name_inp = None
     #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
