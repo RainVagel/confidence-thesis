@@ -313,18 +313,18 @@ if __name__ == "__main__":
      #le = ResNetSmallRunner(mact=True)
      #model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
      #print(model.summary())
-     saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
-     print(saved_model.optimizer.get_config())
+     #saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
+     #print(saved_model.optimizer.get_config())
 
-    #dataset_inp = sys.argv[1]
-    #model_inp = sys.argv[2]
-    #folder_name = sys.argv[3]
-    #mact_inp = bool(sys.argv[4])
-    #try:
-    #    name_inp = sys.argv[5]
-    #except Exception:
-    #    name_inp = None
-    #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+    dataset_inp = sys.argv[1]
+    model_inp = sys.argv[2]
+    folder_name = sys.argv[3]
+    mact_inp = bool(sys.argv[4])
+    try:
+        name_inp = sys.argv[5]
+    except Exception:
+        name_inp = None
+    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
     #paper_example()
