@@ -7,17 +7,17 @@
 #done
 
 echo 'Start training resnet on SVHN'
-python training.py 'SVHN' 'resnet' 'fixed_optimizer' 'True'
+python training.py 'SVHN' 'resnet' 'normalization_moved' 'True'
 echo 'SVHN resnet trained'
 
 echo 'Start training resnet on cifar10'
-python training.py 'CIFAR10' 'resnet' 'fixed_optimizer' 'True'
+python training.py 'CIFAR10' 'resnet' 'normalization_moved' 'True'
 echo 'CIFAR10 resent trained'
 
 echo 'STart training resnet on cifar100'
-python training.py 'CIFAR100' 'resnet' 'fixed_optimizer' 'True'
+python training.py 'CIFAR100' 'resnet' 'normalization_moved' 'True'
 echo 'CIFAR100 resnet trained'
 
 echo 'Start training LeNet on MNIST'
-python training.py 'MNIST' 'lenet' 'fixed_optimizer' 'True'
+python training.py 'MNIST' 'lenet' 'normalization_moved' 'True'
 echo 'MNIST LeNet trained'

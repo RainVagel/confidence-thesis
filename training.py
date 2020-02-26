@@ -287,10 +287,10 @@ def saved_model_tests(model_name, dataset):
 
 
 if __name__ == "__main__":
-    # le = ResNetSmallRunner(mact=True)
-    # le = LeNetRunner(mact=True)
-    # model = le.load_model(input_shape=(32, 32, 3), num_classes=10)
-    # print(model.summary())
+     #le = ResNetSmallRunner(mact=True)
+     #le = ResNetSmallRunner(mact=True)
+     #model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
+     #print(model.summary())
     #saved_model_tests("paper_trial/")
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         name_inp = sys.argv[5]
     except Exception:
         name_inp = None
-    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+    #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
     #paper_example()
