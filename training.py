@@ -201,14 +201,14 @@ def trials():
 
 
 def scheduler(epoch, lr):
-    if epoch < 50:
+    if epoch == 50:
+        return lr / 10
+    elif epoch == 75:
+        return lr / 10
+    elif epoch == 90:
+        return lr / 10
+    else:
         return lr
-    elif 50 <= epoch < 75:
-        return lr / 10
-    elif 75 <= epoch < 90:
-        return lr / 10
-    elif 90 <= epoch < 101:
-        return lr / 10
 
 
 def paper_train(dataset, model_name, folder_name, name=None, mact=True):
