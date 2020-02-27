@@ -118,14 +118,15 @@ class CifarDataset(Dataset):
         y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
         y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
 
+        x_train = x_train.astype('float32')
+        x_test = x_test.astype('float32')
+
         if self.aug:
             x_train = tf.image.random_flip_left_right(x_train)
             x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
             x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
                                 x_train, dtype=tf.float32)
 
-        x_train = x_train.astype('float32')
-        x_test = x_test.astype('float32')
         x_train /= 255
         x_test /= 255
 
