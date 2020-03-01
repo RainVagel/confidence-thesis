@@ -2,6 +2,7 @@ import sys
 from math import ceil
 from pathlib import Path
 import numpy as np
+from matplotlib import pyplot as plt
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
@@ -214,6 +215,9 @@ def scheduler(epoch, lr):
 
 
 def paper_train(dataset, model_name, folder_name, name=None, mact=True):
+    batch_size = 128
+    n_epochs = 100
+
     print("Creating file")
     folder_creater(folder_name)
     print("File created")
@@ -229,19 +233,30 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
 
     print("Loading dataset")
     if dataset == 'SVHN':
-        x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
+        train_aug = ['randomcrop', 'normalize']
+        test_aug = ['normalize']
+        data = SVHNDataset()
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
     elif dataset == 'MNIST':
-        x_train, y_train, x_test, y_test = MnistDataset().load_dataset()
+        train_aug = ['randomcrop', 'normalize']
+        test_aug = ['normalize']
+        data = MnistDataset()
         model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
     elif dataset == 'CIFAR10':
-        x_train, y_train, x_test, y_test = CifarDataset().load_dataset()
+        train_aug = ['horizontalflip', 'randomcrop', 'normalize']
+        test_aug = ['normalize']
+        data = CifarDataset()
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
     elif dataset == 'CIFAR100':
-        x_train, y_train, x_test, y_test = CifarDataset(cifar_version=100).load_dataset()
+        train_aug = ['horizontalflip', 'randomcrop', 'normalize']
+        test_aug = ['normalize']
+        data = CifarDataset(cifar_version=100)
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=100)
     else:
         raise Exception('Unsupported dataset for training')
+
+    train_gen = DataGenerator(data, batch_size, True, aug=train_aug)
+    test_gen = DataGenerator(data, batch_size, False, aug=test_aug)
     print("Dataset loaded")
 
     if dataset == 'MNIST':
@@ -251,25 +266,6 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     else:
         raise Exception("Unsupported dataset for training!")
 
-    batch_size = 128
-    n_epochs = 100
-
-    # Learning rate scheduler based on the code from the article
-    #n_iter_per_epoch = x_train.shape[0] // batch_size
-    #decay1 = round(0.5 * n_iter_per_epoch * n_epochs)
-    #decay2 = round(0.75 * n_iter_per_epoch * n_epochs)
-    #decay3 = round(0.90 * n_iter_per_epoch * n_epochs)
-    #lr_decay_n_updates = [decay1, decay2, decay3]
-    #lr_decay_coefs = [lr, lr / 10, lr / 100, lr / 1000]
-
-    #step = tf.Variable(0, trainable=False)
-    # boundaries = [50, 75, 90]
-    # values = [0.001, 0.0001, 0.00001, 0.000001]
-    #learning_rate_fn = PiecewiseConstantDecay(
-    #    lr_decay_n_updates, lr_decay_coefs)
-
-    # Later, whenever we perform an optimization step, we pass in the step.
-    #learning_rate = learning_rate_fn(step)
     if dataset == 'MNIST':
         optimizer = Adam(lr)
     elif dataset in ('SVHN', 'CIFAR10', 'CIFAR100'):
@@ -284,20 +280,35 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     ]
 
     print("STarting training")
-    model.fit(x_train, y_train, epochs=n_epochs, batch_size=batch_size, callbacks=callbacks)
+    H = model.fit_generator(train_gen, validation_data=test_gen, epochs=n_epochs,
+                            batch_size=batch_size, callbacks=callbacks)
     print("Model trained")
 
     print("Saving model")
     if name is None:
         runner.save_model(model, folder_name, 'paper_{}_{}'.format(dataset, model_name))
+        plot_name = '{}/paper_{}_{}_acc_plot.png'.format(folder_name, dataset, model_name)
     else:
         runner.save_model(model, folder_name, 'paper_{}_{}_{}'.format(dataset, model_name, name))
+        plot_name = '{}/paper_{}_{}_{}_acc_plot.png'.format(folder_name, dataset, model_name, name)
     print("Model saved")
 
     print("Evaluating model")
-    preds = model.evaluate(x_test, y_test)
+    preds = model.evaluate_generator(test_gen)
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
+
+    plt.style.use("ggplot")
+    plt.figure()
+    plt.plot(np.arange(0, n_epochs), H.history["loss"], label="train_loss")
+    plt.plot(np.arange(0, n_epochs), H.history["val_loss"], label="val_loss")
+    plt.plot(np.arange(0, n_epochs), H.history["accuracy"], label="train_acc")
+    plt.plot(np.arange(0, n_epochs), H.history["val_accuracy"], label="val_acc")
+    plt.title("Training Loss and Accuracy on Dataset")
+    plt.xlabel("Epoch #")
+    plt.ylabel("Loss/Accuracy")
+    plt.legend(loc="lower left")
+    plt.savefig(plot_name)
 
 
 def saved_model_tests(model_name, dataset):
@@ -353,7 +364,7 @@ def mnist_yield_trial():
     lr = 0.001
 
     batch_size = 128
-    n_epochs = 100
+    n_epochs = 2
     steps = ceil(data.n_train / batch_size)
 
     optimizer = Adam(lr)
@@ -366,7 +377,7 @@ def mnist_yield_trial():
     ]
 
     print("STarting training")
-    model.fit_generator(train_gen, callbacks=callbacks, epochs=n_epochs)
+    H = model.fit_generator(train_gen, callbacks=callbacks, epochs=n_epochs, validation_data=test_gen)
     print("Model trained")
 
     print("Saving model")
@@ -379,6 +390,20 @@ def mnist_yield_trial():
     preds = model.evaluate_generator(test_gen)
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
+
+    N = 2
+    print(H.history.keys())
+    plt.style.use("ggplot")
+    plt.figure()
+    plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
+    plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+    plt.plot(np.arange(0, N), H.history["accuracy"], label="train_acc")
+    plt.plot(np.arange(0, N), H.history["val_accuracy"], label="val_acc")
+    plt.title("Training Loss and Accuracy on Dataset")
+    plt.xlabel("Epoch #")
+    plt.ylabel("Loss/Accuracy")
+    plt.legend(loc="lower left")
+    plt.show()
 
 if __name__ == "__main__":
      #le = ResNetSmallRunner(mact=True)

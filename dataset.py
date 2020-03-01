@@ -118,20 +118,8 @@ class CifarDataset(Dataset):
         else:
             raise Exception("Unsupported CIFAR version: {}".format(self.n_classes))
 
-        y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
-        y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
-
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
-
-        if self.aug:
-            x_train = tf.image.random_flip_left_right(x_train)
-            x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-            x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float32)
-
-        x_train /= 255
-        x_test /= 255
 
         return x_train, y_train, x_test, y_test
 
@@ -189,19 +177,8 @@ class MnistDataset(Dataset):
     def load_dataset(self):
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-        #y_train = tf.keras.utils.to_categorical(y_train, 10)
-        #y_test = tf.keras.utils.to_categorical(y_test, 10)
-
         x_train = np.reshape(x_train, (self.n_train, self.height, self.width, self.n_colors))
         x_test = np.reshape(x_test, (self.n_test, self.height, self.width, self.n_colors))
-
-        #if self.aug:
-        #    x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-        #    x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-        #                        x_train)
-
-        #x_train = x_train / 255.
-        #x_test = x_test / 255.
 
         return x_train, y_train, x_test, y_test
 
@@ -296,17 +273,6 @@ class SVHNDataset(Dataset):
 
     def load_dataset(self):
         x_train, y_train, x_test, y_test = self._load_images()
-
-        y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
-        y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
-
-        if self.aug:
-            x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-            x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float32)
-
-        x_train /= 255.
-        x_test /= 255.
 
         return x_train, y_train, x_test, y_test
 
