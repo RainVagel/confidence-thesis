@@ -12,7 +12,8 @@ from tensorflow.keras.callbacks import LearningRateScheduler
 import tensorflow as tf
 
 from analysis import BaseAnalyser
-from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, FMnistDataset
+from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, \
+    FMnistDataset, DataGenerator
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
 
 
@@ -340,8 +341,12 @@ def mnist_yield_trial():
 
     data = MnistDataset()
 
-    train_gen = MnistDataset().load_dataset()
-    test_gen = MnistDataset(aug=False).load_dataset(training=False)
+    aug = ['randomcrop', 'normalize']
+
+    train_gen = DataGenerator(data, 128, True, aug=aug)
+    test_gen = DataGenerator(data, 128, False)
+
+    #train_gen = MnistDataset().load_dataset()
     model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
     print("Dataset loaded")
 
@@ -361,7 +366,7 @@ def mnist_yield_trial():
     ]
 
     print("STarting training")
-    model.fit_generator(train_gen, epochs=n_epochs, callbacks=callbacks, steps_per_epoch=steps)
+    model.fit_generator(train_gen, callbacks=callbacks)
     print("Model trained")
 
     print("Saving model")

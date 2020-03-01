@@ -1,6 +1,9 @@
+import math
+
 import numpy as np
 from sklearn import datasets
 import tensorflow as tf
+from tensorflow.keras.utils import Sequence
 import random
 import emnist
 import scipy.io as spio
@@ -177,40 +180,30 @@ class Cifar10GrayScale(Dataset):
 
 
 class MnistDataset(Dataset):
-
     def __init__(self, aug=True):
         super().__init__(aug)
         self.n_train, self.n_test = 60000, 10000
         self.height, self.width, self.n_colors = 28, 28, 1
         self.n_classes = 10
 
-    def load_dataset(self, training=True):
-        if training:
-            x_set, y_set = tf.keras.datasets.mnist.load_data()[0]
-        else:
-            x_set, y_set = tf.keras.datasets.mnist.load_data()[1]
-            #(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-        y_set = tf.keras.utils.to_categorical(y_set, self.n_classes)
+    def load_dataset(self):
+        (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+
         #y_train = tf.keras.utils.to_categorical(y_train, 10)
         #y_test = tf.keras.utils.to_categorical(y_test, 10)
 
-        #x_train = np.reshape(x_train, (self.n_train, self.height, self.width, self.n_colors))
-        #x_test = np.reshape(x_test, (self.n_test, self.height, self.width, self.n_colors))
+        x_train = np.reshape(x_train, (self.n_train, self.height, self.width, self.n_colors))
+        x_test = np.reshape(x_test, (self.n_test, self.height, self.width, self.n_colors))
 
-        if training:
-            x_set = np.reshape(x_set, (self.n_train, self.height, self.width, self.n_colors))
-        else:
-            x_set = np.reshape(x_set, (self.n_test, self.height, self.width, self.n_colors))
+        #if self.aug:
+        #    x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
+        #    x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+        #                        x_train)
 
-        if self.aug:
-            x_set = tf.image.resize_with_pad(x_set, self.height + 8, self.width + 8)
-            x_set = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_set)
+        #x_train = x_train / 255.
+        #x_test = x_test / 255.
 
-        x_set = x_set / 255.
-       # x_test = x_test / 255.
-
-        yield x_set, y_set
+        return x_train, y_train, x_test, y_test
 
 
 class FMnistDataset(Dataset):
@@ -317,8 +310,105 @@ class SVHNDataset(Dataset):
 
         return x_train, y_train, x_test, y_test
 
+class DataGenerator(Sequence):
+    def __init__(self, dataset, batch_size, shuffle, mode='train', aug=None):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.mode = mode
+        self.aug = aug
+        self.height = dataset.height
+        self.width = dataset.width
+        self.n_colors = dataset.n_colors
+        self.n_classes = dataset.n_classes
+        self.n_train = dataset.n_train
+        self.n_test = dataset.n_test
+        self.shuffle = shuffle
+        if self.mode == 'train':
+            self.indexes = np.arange(self.n_train)
+        else:
+            self.indexes = np.arange(self.n_test)
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
 
-class DataGenerator():
+    def __len__(self):
+        if self.mode == 'train':
+            return math.ceil(self.n_train/self.batch_size)
+        else:
+            return math.ceil(self.n_train/self.batch_size)
+
+    def __getitem__(self, item):
+        indexes = self.indexes[item*self.batch_size:(item+1)*self.batch_size]
+
+        X, y = self.__data_generation(indexes)
+        return X, y
+
+    def _random_crop(self, input_data):
+        input_data = tf.image.resize_with_pad(input_data, self.height + 8, self.width + 8)
+        input_data = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+                            input_data, dtype=tf.float32)
+        return input_data
+
+    def _normalize_to_grayscale(self, input_data):
+        # Normalizing and making to grayscale
+        input_data = tf.map_fn(lambda x: np.array(x).mean(axis=2) / 255.0, input_data)
+        return input_data
+
+    @staticmethod
+    def _random_horizontal_flip(input_data):
+        input_data = tf.image.random_flip_left_right(input_data)
+        return input_data
+
+    @staticmethod
+    def _normalize(input_data):
+        input_data /= 255.
+        return input_data
+
+    def _reshape(self, input_data):
+        input_data = np.reshape(input_data, (self.n_train, self.height, self.width, self.n_colors))
+        return input_data
+
+    def __data_generation(self, indexes):
+        X = np.empty((self.batch_size, self.height, self.width, self.n_colors))
+        y = np.empty(self.batch_size, dtype=int)
+
+        x_train, y_train, x_test, y_test = self.dataset.load_dataset()
+
+        if self.mode == 'train':
+            X = tf.gather(x_train, indexes, axis=0)
+            y = tf.gather(y_train, indexes, axis=0)
+        else:
+            #X = tf.gather(x_test, indexes, axis=0)
+            #y = tf.gather(y_test, indexes, axis=0)
+            X = x_test
+            y = y_test
+
+        if self.aug is not None:
+            for augmentation in self.aug:
+                if augmentation.lower() == 'randomcrop':
+                    X = self._random_crop(X)
+                if augmentation.lower() == 'horizontalflip':
+                    X = self._random_horizontal_flip(X)
+                if augmentation.lower() == 'normalize':
+                    X = self._normalize(X)
+                if augmentation.lower() == 'reshape':
+                    X = self._reshape(X)
+                if augmentation.lower() == 'limitdataset':
+                    x_train, y_train, x_test, y_test = x_train[:self.n_train], y_train[:self.n_train], \
+                                                       x_test[:self.n_test], y_test[:self.n_test]
+                if augmentation.lower() == 'normalizegreyscale':
+                    X = self._normalize_to_grayscale(X)
+
+        return X, tf.keras.utils.to_categorical(y, self.n_classes)
+
+    def on_epoch_end(self):
+        if self.mode == 'train':
+            self.indexes = np.arange(self.n_train)
+        else:
+            self.indexes = np.arange(self.n_test)
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+
+class DataGeneratorOld(Sequence):
     def __init__(self, dataset, batch_size, mode='train', aug=None):
         self.dataset = dataset
         self.batch_size = batch_size
