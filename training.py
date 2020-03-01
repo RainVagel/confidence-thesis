@@ -366,7 +366,7 @@ def mnist_yield_trial():
     ]
 
     print("STarting training")
-    model.fit_generator(train_gen, callbacks=callbacks)
+    model.fit_generator(train_gen, callbacks=callbacks, epochs=n_epochs)
     print("Model trained")
 
     print("Saving model")
