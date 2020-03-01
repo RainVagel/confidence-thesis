@@ -383,16 +383,7 @@ if __name__ == "__main__":
      #saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
      #print(saved_model.optimizer.get_config())
 
-    data = MnistDataset()
-    pictures = []
-    for i in range(10):
-        x_set, y_set = data.load_dataset()
-        pictures.append(x_set[0])
-    for i in range(1, len(pictures)):
-        if pictures[i-1] == pictures[i]:
-            print("Same")
-        else:
-            print("Different")
+    mnist_yield_trial()
 
     #dataset_inp = sys.argv[1]
     #model_inp = sys.argv[2]
