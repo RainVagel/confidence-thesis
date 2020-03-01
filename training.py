@@ -280,7 +280,7 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     ]
 
     print("STarting training")
-    H = model.fit_generator(train_gen, validation_data=test_gen, epochs=n_epochs, callbacks=callbacks)
+    H = model.fit_generator(train_gen, validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=4)
     print("Model trained")
 
     print("Saving model")
