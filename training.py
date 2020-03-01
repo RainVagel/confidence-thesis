@@ -352,10 +352,11 @@ def mnist_yield_trial():
 
     data = MnistDataset()
 
-    aug = ['randomcrop', 'normalize']
+    train_aug = ['randomcrop', 'normalize']
+    test_aug = ['normalize']
 
-    train_gen = DataGenerator(data, 128, True, aug=aug)
-    test_gen = DataGenerator(data, 128, False)
+    train_gen = DataGenerator(data, 128, True, aug=train_aug)
+    test_gen = DataGenerator(data, 128, False, aug=test_aug)
 
     #train_gen = MnistDataset().load_dataset()
     model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
@@ -413,17 +414,17 @@ if __name__ == "__main__":
      #saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
      #print(saved_model.optimizer.get_config())
 
-    mnist_yield_trial()
+    #mnist_yield_trial()
 
-    #dataset_inp = sys.argv[1]
-    #model_inp = sys.argv[2]
-    #folder_name = sys.argv[3]
-    #mact_inp = bool(sys.argv[4])
-    #try:
-    #    name_inp = sys.argv[5]
-    #except Exception:
-    #    name_inp = None
-    #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+    dataset_inp = sys.argv[1]
+    model_inp = sys.argv[2]
+    folder_name = sys.argv[3]
+    mact_inp = bool(sys.argv[4])
+    try:
+        name_inp = sys.argv[5]
+    except Exception:
+        name_inp = None
+    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
     #paper_example()
