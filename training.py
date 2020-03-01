@@ -1,4 +1,5 @@
 import sys
+from math import ceil
 from pathlib import Path
 import numpy as np
 
@@ -305,8 +306,74 @@ def saved_model_tests(model_name, dataset):
         for data in [MnistDataset(aug=False), FMnistDataset(aug=False), EMnistDataset(aug=False),
                      Cifar10GrayScale(aug=False)]:
             datasets[data.__class__.__name__] = data.load_dataset()
+    elif dataset.upper() == 'CIFAR10':
+        for data in [SVHNDataset(aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
+            datasets[data.__class__.__name__] = data.load_dataset()
+    elif dataset.upper() == 'CIFAR100':
+        for data in [CifarDataset(cifar_version=10, aug=False), SVHNDataset(aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
+            datasets[data.__class__.__name__] = data.load_dataset()
+    elif dataset.upper() == 'SVHN':
+        for data in [CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
+            datasets[data.__class__.__name__] = data.load_dataset()
+    else:
+        raise Exception("Rubbish datasets not defined for this dataset")
     print(datasets.keys())
 
+    analyser = BaseAnalyser()
+
+    for key in datasets.keys():
+        x_test = dataset[key][2]
+        print("Model: {}".format(model_name))
+        print("MMC, dataset: {}, value: {}".format(key, analyser.mean_max_conf(loaded_model, x_test)))
+        print()
+
+def mnist_yield_trial():
+    folder_name = 'mnist_yield_trial'
+    print("Creating file")
+    folder_creater(folder_name)
+    print("File created")
+
+    print("Loading model")
+    runner = LeNetRunner(mact=True)
+
+    print("Loading dataset")
+
+    data = MnistDataset()
+
+    train_gen = MnistDataset().load_dataset()
+    test_gen = MnistDataset(aug=False).load_dataset(training=False)
+    model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
+    print("Dataset loaded")
+
+    lr = 0.001
+
+    batch_size = 128
+    n_epochs = 100
+    steps = ceil(data.n_train / batch_size)
+
+    optimizer = Adam(lr)
+
+
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+
+    callbacks = [
+        LearningRateScheduler(scheduler, verbose=1)
+    ]
+
+    print("STarting training")
+    model.fit_generator(train_gen, epochs=n_epochs, batch_size=batch_size, callbacks=callbacks, steps_per_epoch=steps)
+    print("Model trained")
+
+    print("Saving model")
+    dataset = 'mnist'
+    model_name = 'generator_trial'
+    runner.save_model(model, folder_name, 'paper_{}_{}'.format(dataset, model_name))
+    print("Model saved")
+
+    print("Evaluating model")
+    preds = model.evaluate_generator(test_gen)
+    print("Loss = " + str(preds[0]))
+    print("Test Accuracy = " + str(preds[1]))
 
 if __name__ == "__main__":
      #le = ResNetSmallRunner(mact=True)
@@ -316,15 +383,26 @@ if __name__ == "__main__":
      #saved_model = load_model("paper_trial/paper_CIFAR10_resnet")
      #print(saved_model.optimizer.get_config())
 
-    dataset_inp = sys.argv[1]
-    model_inp = sys.argv[2]
-    folder_name = sys.argv[3]
-    mact_inp = bool(sys.argv[4])
-    try:
-        name_inp = sys.argv[5]
-    except Exception:
-        name_inp = None
-    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+    data = MnistDataset()
+    pictures = []
+    for i in range(10):
+        x_set, y_set = data.load_dataset()
+        pictures.append(x_set[0])
+    for i in range(1, len(pictures)):
+        if pictures[i-1] == pictures[i]:
+            print("Same")
+        else:
+            print("Different")
+
+    #dataset_inp = sys.argv[1]
+    #model_inp = sys.argv[2]
+    #folder_name = sys.argv[3]
+    #mact_inp = bool(sys.argv[4])
+    #try:
+    #    name_inp = sys.argv[5]
+    #except Exception:
+    #    name_inp = None
+    #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
 
     #mnist_train()
     #paper_example()
