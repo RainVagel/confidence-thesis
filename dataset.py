@@ -292,6 +292,7 @@ class DataGenerator(Sequence):
         self.n_train = dataset.n_train
         self.n_test = dataset.n_test
         self.shuffle = shuffle
+        self.x_train, self.y_train, self.x_test, self.y_test = self.dataset.load_dataset()
         if self.mode == 'train':
             self.indexes = np.arange(self.n_train)
         else:
@@ -337,19 +338,15 @@ class DataGenerator(Sequence):
         return input_data
 
     def __data_generation(self, indexes):
-        X = np.empty((self.batch_size, self.height, self.width, self.n_colors))
-        y = np.empty(self.batch_size, dtype=int)
-
-        x_train, y_train, x_test, y_test = self.dataset.load_dataset()
 
         if self.mode == 'train':
-            X = tf.gather(x_train, indexes, axis=0)
-            y = tf.gather(y_train, indexes, axis=0)
+            X = tf.gather(self.x_train, indexes, axis=0)
+            y = tf.gather(self.y_train, indexes, axis=0)
         else:
             #X = tf.gather(x_test, indexes, axis=0)
             #y = tf.gather(y_test, indexes, axis=0)
-            X = x_test
-            y = y_test
+            X = self.x_test
+            y = self.y_test
 
         if self.aug is not None:
             for augmentation in self.aug:
@@ -362,8 +359,8 @@ class DataGenerator(Sequence):
                 if augmentation.lower() == 'reshape':
                     X = self._reshape(X)
                 if augmentation.lower() == 'limitdataset':
-                    x_train, y_train, x_test, y_test = x_train[:self.n_train], y_train[:self.n_train], \
-                                                       x_test[:self.n_test], y_test[:self.n_test]
+                    x_train, y_train, x_test, y_test = self.x_train[:self.n_train], self.y_train[:self.n_train], \
+                                                       self.x_test[:self.n_test], self.y_test[:self.n_test]
                 if augmentation.lower() == 'normalizegreyscale':
                     X = self._normalize_to_grayscale(X)
 

@@ -284,7 +284,8 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
 
     print("STarting training")
     H = model.fit_generator(train_gen, steps_per_epoch=steps_epoch, validation_steps=val_steps,
-                            validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=6)
+                            validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=16,
+                            max_queue_size=30)
     print("Model trained")
 
     print("Saving model")
