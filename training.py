@@ -255,6 +255,9 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     else:
         raise Exception('Unsupported dataset for training')
 
+    steps_epoch = int(data.n_train/batch_size)
+    val_steps = int(data.n_test/batch_size)
+
     train_gen = DataGenerator(data, batch_size, True, aug=train_aug)
     test_gen = DataGenerator(data, batch_size, False, aug=test_aug)
     print("Dataset loaded")
@@ -280,7 +283,8 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     ]
 
     print("STarting training")
-    H = model.fit_generator(train_gen, validation_data=test_gen, epochs=n_epochs, callbacks=callbacks)
+    H = model.fit_generator(train_gen, steps_per_epoch=steps_epoch, validation_steps=val_steps,
+                            validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=6)
     print("Model trained")
 
     print("Saving model")
