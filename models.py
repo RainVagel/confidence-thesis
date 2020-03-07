@@ -88,6 +88,15 @@ class MActAbs(MAct):
                  b_trainable=True, **kwargs):
         super().__init__(c_initializer, b_initializer, c_trainable, b_trainable, **kwargs)
 
+    def build(self, input_shape):
+        super().build(input_shape)
+
+    def compute_output_shape(self, input_shape):
+        return super().compute_output_shape(input_shape)
+
+    def get_config(self):
+        return super().get_config()
+
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
 
