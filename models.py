@@ -72,6 +72,10 @@ class MAct(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+    def get_config(self):
+        return {'supports_masking': self.supports_masking, 'c_initializer': self.c_initializer,
+                'b_initializer': self.b_initializer, 'c_trainable': self.c_trainable, 'b_trainable': self.b_trainable}
+
 
 class MActAbs(MAct):
     """
@@ -79,6 +83,10 @@ class MActAbs(MAct):
 
     Instead of squaring the inputs we take the absolute value and b is negative.
     """
+
+    def __init__(self, c_initializer=initializers.Ones(), b_initializer=initializers.Ones(), c_trainable=True,
+                 b_trainable=True, **kwargs):
+        super().__init__(c_initializer, b_initializer, c_trainable, b_trainable, **kwargs)
 
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
@@ -388,7 +396,7 @@ class CifarModelRunner(ModelRunner):
                                                     validation_data=(X_test, y_test), workers=workers, callbacks=[self.history])
 
 
-class BasicModel():
+class BasicModel:
     def __init__(self, file_name=None, run_name=None, mact=True):
         self.mact = mact
         self.file_name = file_name
@@ -461,9 +469,11 @@ class BasicModel():
             X = Activation('relu')(X)
         else:
             if self.mact:
-                X = MActAbs()(X)
+                mact_abs = MActAbs()
+                #X = MActAbs()(X)
+                X = mact_abs.call(X)
             else:
-                X = Activation('softmax')
+                X = Activation('softmax')(X)
         return X
 
     def _conv_layer(self, X, size, n_out, stride, bn=False, biases=True):

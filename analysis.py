@@ -137,7 +137,7 @@ class BaseAnalyser:
     def _max_conf(self, preds):
         return np.max(preds, axis=1)
 
-    def _tru(self, a):
+    def tru(self, a):
         return np.isin(a[:, 0], [0, 1])
 
     def roc(self, true_set, conf_set, true_clean, conf_clean):
@@ -145,13 +145,13 @@ class BaseAnalyser:
         conf_with_clean = np.concatenate([conf_set, conf_clean])
         return roc_curve(tru_with_clean, conf_with_clean, pos_label=True), roc_auc_score(tru_with_clean, conf_with_clean)
 
-    def mean_max_conf(self, model, x_test):
-        preds = model(x_test)
-        count = len(x_test)
-        sum = 0
-        for pred in preds:
-            sum += float(pred[np.argmax(pred)])
-        return round(sum / count, 2)
+    def max_conf(self, preds):
+        #count = len(x_test)
+        #sum = 0
+        #for pred in preds:
+        #    sum += float(pred[np.argmax(pred)])
+        #return round(sum / count, 2)
+        return np.max(preds, axis=1)
 
     def fpr_at_95_tpr(self, conf_t, conf_f):
         TPR = 95

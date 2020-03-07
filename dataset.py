@@ -140,29 +140,32 @@ class Cifar10GrayScale(Dataset):
 
     def load_dataset(self):
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-        y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
-        y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
+        #y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
+        #y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
 
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
 
         # Rehsaping to correct dimensionality
-        x_train = np.reshape(x_train, (self.n_train, 32, 32, 1))
-        x_test = np.reshape(x_test, (self.n_test, 32, 32, 1))
+        #x_train = np.reshape(x_train, (self.n_train, 32, 32, 1))
+        #x_test = np.reshape(x_test, (self.n_test, 32, 32, 1))
+
+        x_train = tf.image.rgb_to_grayscale(x_train)
+        x_test = tf.image.rgb_to_grayscale(x_test)
 
         # Resizing to a smaller size
         x_train = tf.image.resize(x_train, size=(self.height, self.width))
         x_test = tf.image.resize(x_test, size=(self.height, self.width))
 
-        if self.aug:
-            x_train = tf.image.random_flip_left_right(x_train)
-            x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-            x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float32)
+        #if self.aug:
+        #    x_train = tf.image.random_flip_left_right(x_train)
+        #    x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
+        #    x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+        #                        x_train, dtype=tf.float32)
 
         # Normalizing and making to grayscale
-        x_train = tf.map_fn(lambda x: np.array(x).mean(axis=2) / 255.0, x_train)
-        x_test = tf.map_fn(lambda x: np.array(x).mean(axis=2) / 255.0, x_test)
+        #x_train /= 255.0
+        #x_test /= 255.0
 
         return x_train, y_train, x_test, y_test
 
@@ -195,19 +198,22 @@ class FMnistDataset(Dataset):
 
     def load_dataset(self):
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
-        y_train = tf.keras.utils.to_categorical(y_train, 10)
-        y_test = tf.keras.utils.to_categorical(y_test, 10)
+        #y_train = tf.keras.utils.to_categorical(y_train, 10)
+        #y_test = tf.keras.utils.to_categorical(y_test, 10)
 
         x_train = np.reshape(x_train, (self.n_train, self.height, self.width, self.n_colors))
         x_test = np.reshape(x_test, (self.n_test, self.height, self.width, self.n_colors))
 
-        if self.aug:
-            x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-            x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train)
+        #if self.aug:
+        #    x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
+        #    x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+        #                        x_train)
 
-        x_train = x_train / 255.
-        x_test = x_test / 255.
+        #x_train = x_train / 255.
+        #x_test = x_test / 255.
+
+        x_train = x_train.astype('float32')
+        x_test = x_test.astype('float32')
 
         return x_train, y_train, x_test, y_test
 
@@ -222,8 +228,8 @@ class EMnistDataset(Dataset):
     def load_dataset(self):
         x_train, y_train = emnist.extract_training_samples('letters')
         x_test, y_test = emnist.extract_test_samples('letters')
-        y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
-        y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
+        #y_train = tf.keras.utils.to_categorical(y_train, self.n_classes)
+        #y_test = tf.keras.utils.to_categorical(y_test, self.n_classes)
 
         x_train, y_train, x_test, y_test = x_train[:self.n_train], y_train[:self.n_train], \
                                            x_test[:self.n_test], y_test[:self.n_test]
@@ -231,13 +237,16 @@ class EMnistDataset(Dataset):
         x_train = np.reshape(x_train, (self.n_train, self.height, self.width, self.n_colors))
         x_test = np.reshape(x_test, (self.n_test, self.height, self.width, self.n_colors))
 
-        if self.aug:
-            x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
-            x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
-                                x_train, dtype=tf.float32)
+        #if self.aug:
+        #    x_train = tf.image.resize_with_pad(x_train, self.height + 8, self.width + 8)
+        #    x_train = tf.map_fn(lambda x: crop_image(x, self.height + 4, self.width + 4, self.height, self.width),
+        #                        x_train, dtype=tf.float32)
 
-        x_train = x_train / 255.
-        x_test = x_test / 255.
+        #x_train = x_train / 255.
+        #x_test = x_test / 255.
+
+        x_train = x_train.astype('float32')
+        x_test = x_test.astype('float32')
 
         return x_train, y_train, x_test, y_test
 
@@ -364,7 +373,8 @@ class DataGenerator(Sequence):
                 if augmentation.lower() == 'normalizegreyscale':
                     X = self._normalize_to_grayscale(X)
 
-        return X, tf.keras.utils.to_categorical(y, self.n_classes)
+        #return X, tf.keras.utils.to_categorical(y, self.n_classes)
+        return X, y
 
     def on_epoch_end(self):
         if self.mode == 'train':
