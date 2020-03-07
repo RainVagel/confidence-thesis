@@ -88,23 +88,6 @@ class MActAbs(MAct):
                  b_trainable=True, **kwargs):
         super().__init__(c_initializer, b_initializer, c_trainable, b_trainable, **kwargs)
 
-    def build(self, input_shape):
-        self.c = self.add_weight(name="c",
-                                 shape=(input_shape[1],),
-                                 initializer=self.c_initializer,
-                                 trainable=self.c_trainable)  # Initialiseerida c ühtedeks / nullideks
-        self.b = self.add_weight(name="b",
-                                 shape=(input_shape[1],),
-                                 initializer=self.b_initializer,
-                                 trainable=self.b_trainable)  # Initialiseerida b nullideks
-        super(MActAbs, self).build(input_shape)
-
-    def compute_output_shape(self, input_shape):
-        return super().compute_output_shape(input_shape)
-
-    def get_config(self):
-        return super().get_config()
-
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
 
@@ -486,9 +469,7 @@ class BasicModel:
             X = Activation('relu')(X)
         else:
             if self.mact:
-                mact_abs = MActAbs()
-                #X = MActAbs()(X)
-                X = mact_abs.call(X)
+                X = MActAbs()(X)
             else:
                 X = Activation('softmax')(X)
         return X

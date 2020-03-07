@@ -313,7 +313,7 @@ class DataGenerator(Sequence):
         if self.mode == 'train':
             return math.ceil(self.n_train/self.batch_size)
         else:
-            return math.ceil(self.n_train/self.batch_size)
+            return math.ceil(self.n_test/self.batch_size)
 
     def __getitem__(self, item):
         indexes = self.indexes[item*self.batch_size:(item+1)*self.batch_size]
@@ -373,8 +373,8 @@ class DataGenerator(Sequence):
                 if augmentation.lower() == 'normalizegreyscale':
                     X = self._normalize_to_grayscale(X)
 
-        #return X, tf.keras.utils.to_categorical(y, self.n_classes)
-        return X, y
+        return X, tf.keras.utils.to_categorical(y, self.n_classes)
+        #return X, y
 
     def on_epoch_end(self):
         if self.mode == 'train':
