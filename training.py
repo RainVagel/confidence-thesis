@@ -15,7 +15,8 @@ import tensorflow as tf
 from analysis import BaseAnalyser
 from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, \
     FMnistDataset, DataGenerator
-from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner, ResNetSmallRunner
+from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner,\
+    ResNetSmallRunner, lmd_added_loss
 
 
 def create_relu_model():
@@ -197,12 +198,6 @@ def mnist_train():
     print("Test Accuracy = " + str(preds[1]))
 
 
-def trials():
-    x_train, y_train, x_test, y_test = SVHNDataset().load_dataset()
-    #x_train, y_train, x_test, y_test = EMnistDataset().load_dataset()
-    print(x_train[0])
-
-
 def scheduler(epoch, lr):
     if epoch == 50:
         return lr / 10
@@ -339,15 +334,12 @@ def mnist_yield_trial():
     print("Dataset loaded")
 
     lr = 0.001
-
-    batch_size = 128
     n_epochs = 2
-    steps = ceil(data.n_train / batch_size)
 
     optimizer = Adam(lr)
 
 
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=['accuracy'])
 
     callbacks = [
         LearningRateScheduler(scheduler, verbose=1)
@@ -382,16 +374,8 @@ def mnist_yield_trial():
     plt.legend(loc="lower left")
     plt.show()
 
-if __name__ == "__main__":
-     #le = ResNetSmallRunner(mact=True)
-     #le = ResNetSmallRunner(mact=True)
-     #model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
-     #print(model.summary())
-     #saved_model = load_model("fixed_augmentation/paper_MNIST_lenet_softmax")
-     #saved_model_tests("fixed_augmentation/paper_MNIST_lenet_softmax", "MNIST")
-     #print(saved_model.optimizer.get_config())
 
-    #mnist_yield_trial()
+if __name__ == "__main__":
 
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
@@ -405,17 +389,17 @@ if __name__ == "__main__":
     n_epochs = int(sys.argv[6])
     paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
 
-    #loaded_model = load_model("mact_trials/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
+    #loaded_model = load_model("mact_trials/paper_CIFAR10_resnet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
 
      #data = MnistDataset()
      #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
 
-     #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
+     #loaded_model = load_model("mact_trials/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
 
      #print(loaded_model.predict(x_test))
      #analyser = BaseAnalyser()
-     #print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
+     #print(analyser.get_output(x_test, loaded_model, -2))
 
     #model = create_tanh_model()
     #moons_dataset = MoonsDataset()
@@ -443,14 +427,6 @@ if __name__ == "__main__":
     #print(analyser.mean_max_conf(loaded_model, x_test))
 
     #print(analyser._tru(y_test))
-
-    #cifar_example()
-    #main()
-    #model_function = sys.argv[1]
-    #n_iterations = int(sys.argv[2])
-    #file_name = sys.argv[3]
-    #run_name = sys.argv[4]
-    #run_for_trial(model_function, n_iterations, file_name, run_name)
 
     #loaded_model = load_model("four_moons/tanh_modded_5/d100_d100_d100_d100_d2_tanh_MActAbs")
 

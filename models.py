@@ -5,7 +5,7 @@ import csv
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.keras import initializers
+from tensorflow.keras import initializers, regularizers
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential, Model
@@ -407,7 +407,7 @@ class BasicModel:
             folder_name = self.file_name
         if file_name is None:
             file_name = self.run_name
-        model.save(folder_name + "/" + file_name)
+        model.save(folder_name + "/" + file_name + '.h5')
 
     def _batch_norm(self, X):
         X = BatchNormalization(momentum=0.99, epsilon=1e-5, center=True, scale=True)(X)
@@ -450,10 +450,11 @@ class BasicModel:
     def _conv(self, X, filter_size, stride, out_filters, biases=False):
         if biases:
             X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
-                       strides=[stride, stride], padding='same', bias_initializer=Constant(0.0))(X)
+                       strides=[stride, stride], padding='same', bias_initializer=Constant(0.0),
+                       kernel_regularizer=regularizers.l2(0.0005))(X)
         else:
             X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
-                       strides=[stride, stride], padding='same')(X)
+                       strides=[stride, stride], padding='same', kernel_regularizer=regularizers.l2(0.0005))(X)
         return X
 
     def _fc_layer(self, X, n_out, bn=False, last=False):
@@ -463,7 +464,7 @@ class BasicModel:
         else:
             n_in = int(X.shape[1])
         X = Dense(n_out, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
-                  bias_initializer=Constant(0.0))(X)
+                  bias_initializer=Constant(0.0), kernel_regularizer=regularizers.l2(0.0005))(X)
         X = self._batch_norm(X) if bn else X
         if not last:
             X = Activation('relu')(X)
@@ -536,3 +537,10 @@ class LeNetRunner(BasicModel):
 
         model = Model(inputs=X_input, outputs=X, name="LeNet")
         return model
+
+
+def lmd_added_loss(lmbd):
+    def loss(y_true, y_pred):
+        cce = CategoricalCrossentropy()
+        return cce(y_true, y_pred) + lmbd
+    return loss
