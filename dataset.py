@@ -288,6 +288,7 @@ class SVHNDataset(Dataset):
 
         return x_train, y_train, x_test, y_test
 
+
 class DataGenerator(Sequence):
     def __init__(self, dataset, batch_size, shuffle, mode='train', aug=None):
         self.dataset = dataset
@@ -319,7 +320,12 @@ class DataGenerator(Sequence):
         indexes = self.indexes[item*self.batch_size:(item+1)*self.batch_size]
 
         X, y = self.__data_generation(indexes)
-        return X, y
+        return X, tf.keras.utils.to_categorical(y, self.n_classes)
+
+    def get_analysis(self):
+        indexes = self.indexes[0:self.batch_size]
+        X, y = self.__data_generation(indexes)
+        return X, tf.keras.utils.to_categorical(y, self.n_classes)
 
     def _random_crop(self, input_data):
         input_data = tf.image.resize_with_pad(input_data, self.height + 8, self.width + 8)
@@ -373,8 +379,7 @@ class DataGenerator(Sequence):
                 if augmentation.lower() == 'normalizegreyscale':
                     X = self._normalize_to_grayscale(X)
 
-        return X, tf.keras.utils.to_categorical(y, self.n_classes)
-        #return X, y
+        return X, y
 
     def on_epoch_end(self):
         if self.mode == 'train':

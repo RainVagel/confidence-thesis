@@ -407,7 +407,7 @@ class BasicModel:
             folder_name = self.file_name
         if file_name is None:
             file_name = self.run_name
-        model.save(folder_name + "/" + file_name)
+        model.save(folder_name + "/" + file_name + '.h5')
 
     def _batch_norm(self, X):
         X = BatchNormalization(momentum=0.99, epsilon=1e-5, center=True, scale=True)(X)

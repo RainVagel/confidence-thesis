@@ -315,55 +315,6 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     plt.savefig(plot_name)
 
 
-def saved_model_tests(model_name, dataset):
-    loaded_model = load_model(model_name)
-    datasets = {}
-    if dataset.upper() == 'MNIST':
-        for data in [MnistDataset(aug=False), FMnistDataset(aug=False), EMnistDataset(aug=False),
-                     Cifar10GrayScale(aug=False)]:
-            train_gen = DataGenerator(data, data.n_train, False, "train", aug=['normalize'])
-            test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
-            x_train, y_train = train_gen.__getitem__(0)
-            x_test, y_test = test_gen.__getitem__(0)
-            datasets[data.__class__.__name__] = (x_train, y_train, x_test, y_test)
-    elif dataset.upper() == 'CIFAR10':
-        for data in [SVHNDataset(aug=False), CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    elif dataset.upper() == 'CIFAR100':
-        for data in [CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False), SVHNDataset(aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    elif dataset.upper() == 'SVHN':
-        for data in [SVHNDataset(aug=False), CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    else:
-        raise Exception("Rubbish datasets not defined for this dataset")
-
-
-    analyser = BaseAnalyser()
-
-    for key in datasets:
-        x_train = datasets[key][0]
-        y_train = datasets[key][1]
-        x_test = datasets[key][2]
-        y_test = datasets[key][3]
-        pred_train = loaded_model.predict(x_train)
-        pred_test = loaded_model.predict(x_test)
-        conf_train = analyser.max_conf(pred_train)
-        conf_test = analyser.max_conf(pred_test)
-        print("Model: {}".format(model_name))
-        print("MMC train, dataset: {}, value: {}".format(key, np.mean(conf_train)))
-        print("MMC test, dataset: {}, value: {}".format(key, np.mean(conf_test)))
-        #(fpr, tpr, thresholds), auc_score = analyser.roc(y_test, pred_test, y_train, pred_train)
-        #print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
-        #fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(pred_train, pred_test)
-        #print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
-
 def mnist_yield_trial():
     folder_name = 'mnist_yield_trial'
     print("Creating file")
@@ -436,7 +387,7 @@ if __name__ == "__main__":
      #le = ResNetSmallRunner(mact=True)
      #model = le.load_model(input_shape=(28, 28, 1), num_classes=10)
      #print(model.summary())
-     #saved_model = load_model("fixed_augmentation/paper_MNIST_lenet")
+     #saved_model = load_model("fixed_augmentation/paper_MNIST_lenet_softmax")
      #saved_model_tests("fixed_augmentation/paper_MNIST_lenet_softmax", "MNIST")
      #print(saved_model.optimizer.get_config())
 
