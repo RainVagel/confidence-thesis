@@ -216,7 +216,7 @@ def scheduler(epoch, lr):
 
 def paper_train(dataset, model_name, folder_name, name=None, mact=True):
     batch_size = 128
-    n_epochs = 100
+    n_epochs = 10
 
     print("Creating file")
     folder_creater(folder_name)
@@ -402,6 +402,9 @@ if __name__ == "__main__":
     except Exception:
         name_inp = None
     paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+
+    #loaded_model = load_model("tf_upgrade/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
+    #print(loaded_model.summary())
 
     #mnist_train()
     #paper_example()

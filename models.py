@@ -73,8 +73,8 @@ class MAct(Layer):
         return input_shape
 
     def get_config(self):
-        return {'supports_masking': self.supports_masking, 'c_initializer': self.c_initializer,
-                'b_initializer': self.b_initializer, 'c_trainable': self.c_trainable, 'b_trainable': self.b_trainable}
+        return {'c_initializer': self.c_initializer, 'b_initializer': self.b_initializer,
+                'c_trainable': self.c_trainable, 'b_trainable': self.b_trainable}
 
 
 class MActAbs(MAct):
