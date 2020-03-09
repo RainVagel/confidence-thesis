@@ -214,9 +214,8 @@ def scheduler(epoch, lr):
         return lr
 
 
-def paper_train(dataset, model_name, folder_name, name=None, mact=True):
+def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs=100):
     batch_size = 128
-    n_epochs = 10
 
     print("Creating file")
     folder_creater(folder_name)
@@ -401,17 +400,20 @@ if __name__ == "__main__":
         name_inp = sys.argv[5]
     except Exception:
         name_inp = None
-    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp)
+    n_epochs = int(sys.argv[6])
+    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
 
-    #loaded_model = load_model("tf_upgrade/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
+    #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
 
-    #mnist_train()
-    #paper_example()
-    #le = ResNetSmallRunner(mact=True)
-    #le = LeNetRunner(mact=True)
-    #model = le.load_model(input_shape=(64, 64, 3), num_classes=6)
-    #print(model.summary())
+     #data = MnistDataset()
+     #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
+
+     #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
+
+     #print(loaded_model.predict(x_test))
+     #analyser = BaseAnalyser()
+     #print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
 
     #model = create_tanh_model()
     #moons_dataset = MoonsDataset()

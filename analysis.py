@@ -229,16 +229,18 @@ def saved_model_tests(model_name, dataset):
 
 
 if __name__ == '__main__':
-    saved_model_tests("activation_line/paper_MNIST_lenet_softmax", "MNIST")
+    #saved_model_tests("activation_line/paper_MNIST_lenet_softmax", "MNIST")
     #runner = LeNetRunner(True)
 
     #model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
 
     #print(model.summary())
 
-    #data = MnistDataset()
-    #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
+    data = MnistDataset()
+    x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
 
-    #print(loaded_model.predict(x_test))
-    #analyser = BaseAnalyser()
-    #print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
+    loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
+
+    print(loaded_model.predict(x_test))
+    analyser = BaseAnalyser()
+    print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
