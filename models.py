@@ -407,7 +407,7 @@ class BasicModel:
             folder_name = self.file_name
         if file_name is None:
             file_name = self.run_name
-        model.save(folder_name + "/" + file_name + '.h5')
+        model.save(folder_name + "/" + file_name)
 
     def _batch_norm(self, X):
         X = BatchNormalization(momentum=0.99, epsilon=1e-5, center=True, scale=True)(X)
@@ -486,7 +486,7 @@ class ResNetSmallRunner(BasicModel):
     # Implemented based on the ResNetSmall model from https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
 
     def __init__(self, mact):
-        super().__init__(mact)
+        super().__init__(mact=mact)
         self.n_filters = [16, 16, 32, 64]
 
     def load_model(self, input_shape, num_classes):
@@ -509,15 +509,6 @@ class ResNetSmallRunner(BasicModel):
 
         # Logit
         X = self._fc_layer(X, num_classes, last=True)
-        #X = Flatten()(X)
-        #n_in = int(input_shape[1]) * int(input_shape[2]) * int(input_shape[3])
-        #X = Dense(num_classes, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
-        #          bias_initializer=constant(0.0))(X)
-
-        #if self.mact:
-        #    X = MActAbs()(X)
-        #else:
-        #    X = Activation('softmax')(X)
 
         model = Model(inputs=X_input, outputs=X, name="ResNetSmall")
         return model
@@ -528,7 +519,7 @@ class LeNetRunner(BasicModel):
     # Based on LeNet from here: https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
 
     def __init__(self, mact):
-        super().__init__(mact)
+        super().__init__(mact=mact)
         self.strides = [1, 1]
         self.n_filters = [32, 64]
         self.n_fc = [1024]
@@ -545,32 +536,3 @@ class LeNetRunner(BasicModel):
 
         model = Model(inputs=X_input, outputs=X, name="LeNet")
         return model
-
-        #self.model = Sequential()
-        # First conv layer
-        #self.model.add(Conv2D(32, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
-        #                      bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same',
-        #                      input_size=x_train.shape[1:]))
-        #self.model.add(Activation('relu'))
-        #self.model.add(MaxPooling2D(pool_size=(2, 2)))
-
-        # Second conv layer
-        #self.model.add(Conv2D(64, kernel_size=(5, 5), kernel_initializer=TruncatedNormal(stddev=0.1),
-        #                      bias_initializer=Constant(value=0.1), strides=[1, 1, 1, 1], padding='same'))
-        #self.model.add(Activation('relu'))
-        #self.model.add(MaxPooling2D(pool_size=(2, 2)))
-
-        # First Dense layer
-        #self.model.add(Dense(1024, kernel_initializer=TruncatedNormal(stddev=0.1),
-        #                     bias_initializer=Constant(value=0.1)))
-        #self.model.add(Flatten())
-        #self.model.add(Activation('relu'))
-
-        #Output layer
-        #self.model.add(Dense(num_classes, kernel_initializer=TruncatedNormal(stddev=0.1),
-        #                     bias_initializer=Constant(value=0.1)))
-        #if self.mact:
-        #    self.model.add(MActAbs())
-        #else:
-        #    self.model.add(Activation('softmax'))
-

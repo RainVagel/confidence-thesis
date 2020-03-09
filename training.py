@@ -217,6 +217,7 @@ def scheduler(epoch, lr):
 def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs=100):
     batch_size = 128
 
+    print(mact)
     print("Creating file")
     folder_creater(folder_name)
     print("File created")
@@ -395,7 +396,8 @@ if __name__ == "__main__":
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
     folder_name = sys.argv[3]
-    mact_inp = bool(sys.argv[4])
+    mact_inp = sys.argv[4]
+    mact_inp = True if mact_inp.lower() == 'true' else False
     try:
         name_inp = sys.argv[5]
     except Exception:
@@ -403,7 +405,7 @@ if __name__ == "__main__":
     n_epochs = int(sys.argv[6])
     paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
 
-    #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
+    #loaded_model = load_model("mact_trials/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
 
      #data = MnistDataset()
