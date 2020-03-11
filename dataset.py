@@ -323,7 +323,7 @@ class DataGenerator(Sequence):
         return X, tf.keras.utils.to_categorical(y, self.n_classes)
 
     def get_analysis(self):
-        indexes = self.indexes[0:self.batch_size]
+        indexes = self.indexes[:self.batch_size]
         X, y = self.__data_generation(indexes)
         return X, tf.keras.utils.to_categorical(y, self.n_classes)
 

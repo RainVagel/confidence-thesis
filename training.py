@@ -274,7 +274,8 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
     callbacks = [
-        LearningRateScheduler(scheduler, verbose=1)
+        LearningRateScheduler(scheduler, verbose=1),
+        CustomHistory()
     ]
 
     print("STarting training")
@@ -287,9 +288,11 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs
     if name is None:
         runner.save_model(model, folder_name, 'paper_{}_{}'.format(dataset, model_name))
         plot_name = '{}/paper_{}_{}_acc_plot.png'.format(folder_name, dataset, model_name)
+        params_file_name = '{}/paper_{}_{}_params.csv'.format(folder_name, dataset, model_name)
     else:
         runner.save_model(model, folder_name, 'paper_{}_{}_{}'.format(dataset, model_name, name))
         plot_name = '{}/paper_{}_{}_{}_acc_plot.png'.format(folder_name, dataset, model_name, name)
+        params_file_name = '{}/paper_{}_{}_{}_params.csv'.format(folder_name, dataset, model_name, name)
     print("Model saved")
 
     print("Evaluating model")
@@ -308,6 +311,12 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs
     plt.ylabel("Loss/Accuracy")
     plt.legend(loc="lower left")
     plt.savefig(plot_name)
+
+    # Saving the b and c learnable parameters
+    with open(params_file_name, 'w') as filehandle:
+        filehandle.write("B;C\n")
+        for b, c in zip(H.history["b"], H.history["c"]):
+            filehandle.write("{};{}\n".format(b, c))
 
 
 def mnist_yield_trial():
@@ -375,7 +384,79 @@ def mnist_yield_trial():
     plt.show()
 
 
+def rbs_generator(true_data, rbs_data_lst):
+    datasets = {}
+    data = true_data
+    tru_x_test, tru_y_test = DataGenerator(data, data.n_test, False, "test", aug=['normalize']).get_analysis()
+    for data in rbs_data_lst:
+        test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
+        x_test, y_test = test_gen.get_analysis()
+        datasets[data.__class__.__name__] = (x_test, y_test)
+    return tru_x_test, tru_y_test, datasets
+
+
+def saved_model_tests(model_name, dataset):
+    loaded_model = load_model(model_name, custom_objects={'MActAbs': MActAbs})
+
+    if dataset.upper() == 'MNIST':
+        trained_dataset = MnistDataset(aug=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [FMnistDataset(aug=False), EMnistDataset(aug=False),
+                                                          Cifar10GrayScale(aug=False)])
+    elif dataset.upper() == 'CIFAR10':
+        trained_dataset = CifarDataset(cifar_version=10, aug=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [SVHNDataset(aug=False),
+                                                          CifarDataset(cifar_version=100, aug=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+    elif dataset.upper() == 'CIFAR100':
+        trained_dataset = CifarDataset(cifar_version=100, aug=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [SVHNDataset(aug=False),
+                                                          CifarDataset(cifar_version=10, aug=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+    elif dataset.upper() == 'SVHN':
+        trained_dataset = SVHNDataset(aug=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [CifarDataset(cifar_version=100, aug=False),
+                                                          CifarDataset(cifar_version=10, aug=False)])  # Missing LSUN_classroom and imagenet_minus_cifar10
+    else:
+        raise Exception("Rubbish datasets not defined for this dataset")
+
+    analyser = BaseAnalyser()
+
+    tru_test_pred = loaded_model.predict(tru_x_test)
+    tru_lbl = analyser.tru(tru_y_test)
+    conf_tru_test = analyser.max_conf(tru_test_pred)
+    print("Model: {}".format(model_name))
+    print("MMC, dataset: {}, value: {}".format(trained_dataset.__class__.__name__, np.mean(conf_tru_test)))
+
+    for key in datasets:
+        rbs_x_test = datasets[key][0]
+        rbs_y_test = datasets[key][1]
+        tru_rbs_lbl = analyser.tru(rbs_y_test)*False
+        rbs_pred_test = loaded_model.predict(rbs_x_test)
+        conf_rbs_test = analyser.max_conf(rbs_pred_test)
+        print("MMC, dataset: {}, value: {}".format(key, np.mean(conf_rbs_test)))
+        (fpr, tpr, thresholds), auc_score = analyser.roc(tru_rbs_lbl, conf_rbs_test, tru_lbl, conf_tru_test)
+        print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
+        fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(conf_tru_test, conf_rbs_test)
+        print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
+
+
+def layer_output_analyser(model, dataset):
+    analyser = BaseAnalyser()
+    x_test, _ = DataGenerator(dataset, dataset.n_test, False, "test", aug=['normalize']).get_analysis()
+    loaded_model = load_model(model, custom_objects={'MActAbs': MActAbs})
+    output_layer = analyser.get_output(x_test, loaded_model, -1)
+    np.savetxt(model.split(".")[0] + "_output_layer.csv", output_layer, delimiter=";")
+    output_layer = analyser.get_output(x_test, loaded_model, -2)
+    np.savetxt(model.split(".")[0] + "_pre_output_layer.csv", output_layer, delimiter=";")
+
 if __name__ == "__main__":
+    #trained_dataset = MnistDataset(aug=False)
+    #layer_output_analyser("regularization/paper_MNIST_lenet_mact.h5", trained_dataset)
+    #saved_model_tests("regularization/paper_MNIST_lenet_softmax.h5", "MNIST")
+    #loaded_model = load_model("regularization/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
+    #print(loaded_model.summary())
 
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]

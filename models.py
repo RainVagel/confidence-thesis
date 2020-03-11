@@ -28,12 +28,14 @@ class CustomHistory(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        self.epoch.append(epoch)
+        #self.epoch.append(epoch)
         weights = self.model.layers[-1].get_weights()
-        for k, v in logs.items():
-            self.history.setdefault(k, []).append(v)
-        self.history.setdefault('c', []).append(weights[0].tolist())
-        self.history.setdefault('b', []).append(weights[1].tolist())
+        #for k, v in logs.items():
+        #    self.history.setdefault(k, []).append(v)
+        #self.history.setdefault('c', []).append(weights[0].tolist())
+        #self.history.setdefault('b', []).append(weights[1].tolist())
+        logs.setdefault('c', []).extend(weights[0].tolist())
+        logs.setdefault('b', []).extend(weights[1].tolist())
 
 
 class MAct(Layer):

@@ -169,78 +169,13 @@ class BaseAnalyser:
         FPR = np.sum(conf_f >= PERC) / len(conf_f)
         return FPR, PERC
 
-
-def saved_model_tests(model_name, dataset):
-    loaded_model = load_model(model_name)
-    datasets = {}
-    if dataset.upper() == 'MNIST':
-        for data in [MnistDataset(aug=False), FMnistDataset(aug=False), EMnistDataset(aug=False),
-                     Cifar10GrayScale(aug=False)]:
-            train_gen = DataGenerator(data, data.n_train, False, "train", aug=['normalize'])
-            test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
-            x_train, y_train = train_gen.get_analysis()
-            x_test, y_test = test_gen.get_analysis()
-            if data.__class__.__name__ == 'MnistDataset':
-                tru_x_train, tru_y_train = x_train, y_train
-                tru_x_test, tru_y_test = x_test, y_test
-            datasets[data.__class__.__name__] = (x_train, y_train, x_test, y_test)
-    elif dataset.upper() == 'CIFAR10':
-        for data in [SVHNDataset(aug=False), CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    elif dataset.upper() == 'CIFAR100':
-        for data in [CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False), SVHNDataset(aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    elif dataset.upper() == 'SVHN':
-        for data in [SVHNDataset(aug=False), CifarDataset(cifar_version=10, aug=False), CifarDataset(cifar_version=100, aug=False)]: # Missing LSUN_classroom and imagenet_minus_cifar10
-            x_train, y_train, x_test, y_test = data.load_dataset()
-            datasets[data.__class__.__name__] = (x_train, tf.keras.utils.to_categorical(y_train, data.n_classes),
-                                                 x_test, tf.keras.utils.to_categorical(y_test, data.n_classes))
-    else:
-        raise Exception("Rubbish datasets not defined for this dataset")
-
-
-    analyser = BaseAnalyser()
-
-    for key in datasets:
-        x_train = datasets[key][0]
-        y_train = datasets[key][1]
-        x_test = datasets[key][2]
-        y_test = datasets[key][3]
-        tru_train_pred = loaded_model.predict(tru_x_train)
-        tru_test_pred = loaded_model.predict(tru_x_test)
-        tru_lbl = analyser.tru(tru_y_train)
-        tru_rbs_lbl = analyser.tru(y_train)*False
-        pred_train = loaded_model.predict(x_train)
-        pred_test = loaded_model.predict(x_test)
-        conf_tru_train = analyser.max_conf(tru_train_pred)
-        conf_train = analyser.max_conf(pred_train)
-        conf_test = analyser.max_conf(pred_test)
-        print("Model: {}".format(model_name))
-        print("MMC train, dataset: {}, value: {}".format(key, np.mean(conf_train)))
-        print("MMC test, dataset: {}, value: {}".format(key, np.mean(conf_test)))
-        (fpr, tpr, thresholds), auc_score = analyser.roc(tru_rbs_lbl, conf_train, tru_lbl, conf_tru_train)
-        print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
-        fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(conf_train, conf_test)
-        print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
-
-
 if __name__ == '__main__':
-    #saved_model_tests("activation_line/paper_MNIST_lenet_softmax", "MNIST")
-    #runner = LeNetRunner(True)
-
-    #model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
-
-    #print(model.summary())
 
     data = MnistDataset()
-    x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
+    #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
 
-    loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
+    #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
 
-    print(loaded_model.predict(x_test))
-    analyser = BaseAnalyser()
-    print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
+    #print(loaded_model.predict(x_test))
+    #analyser = BaseAnalyser()
+    #print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
