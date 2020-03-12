@@ -273,10 +273,15 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs
 
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    callbacks = [
-        LearningRateScheduler(scheduler, verbose=1),
-        CustomHistory()
-    ]
+    if mact:
+        callbacks = [
+            LearningRateScheduler(scheduler, verbose=1),
+            CustomHistory()
+        ]
+    else:
+        callbacks = [
+            LearningRateScheduler(scheduler, verbose=1)
+        ]
 
     print("STarting training")
     H = model.fit_generator(train_gen, steps_per_epoch=steps_epoch, validation_steps=val_steps,
