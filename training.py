@@ -317,11 +317,12 @@ def paper_train(dataset, model_name, folder_name, name=None, mact=True, n_epochs
     plt.legend(loc="lower left")
     plt.savefig(plot_name)
 
-    # Saving the b and c learnable parameters
-    with open(params_file_name, 'w') as filehandle:
-        filehandle.write("B;C\n")
-        for b, c in zip(H.history["b"], H.history["c"]):
-            filehandle.write("{};{}\n".format(b, c))
+    if mact:
+        # Saving the b and c learnable parameters
+        with open(params_file_name, 'w') as filehandle:
+            filehandle.write("B;C\n")
+            for b, c in zip(H.history["b"], H.history["c"]):
+                filehandle.write("{};{}\n".format(b, c))
 
 
 def mnist_yield_trial():
