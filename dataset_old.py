@@ -10,6 +10,7 @@ import pickle
 import os
 import scipy.misc
 from PIL import Image
+from itertools import repeat
 
 
 def get_next_batch(X, Y, batch_size, shuffle=False):
@@ -71,12 +72,13 @@ class GrayscaleDataset(Dataset):
         """
         We need to redefine yield_data() to fix the fact that mnist by default is bs x 28 x 28 and not bs x 28 x 28 x 1
         """
-        for i, (x, y) in enumerate(iterator):
-            x = x[:, :, :, np.newaxis]  # bs x 28 x 28   ->   bs x 28 x 28 x 1
-            x, y = x.numpy(), y.numpy()
-            yield (x, y)
-            if i + 1 == n_batches:
-                break
+        for x_iterator in repeat(iterator):
+            for i, (x, y) in enumerate(x_iterator):
+                x = x[:, :, :, np.newaxis]  # bs x 28 x 28   ->   bs x 28 x 28 x 1
+                x, y = x.numpy(), y.numpy()
+                yield (x, y)
+                if i + 1 == n_batches:
+                    break
 
 
 class MNIST(GrayscaleDataset):
