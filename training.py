@@ -419,7 +419,7 @@ def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_
     print("Model saved")
 
     print("Evaluating model")
-    preds = model.evaluate_generator(test_gen)
+    preds = model.evaluate_generator(test_gen, steps=val_steps)
     print("Loss = " + str(preds[0]))
     print("Test Accuracy = " + str(preds[1]))
 
