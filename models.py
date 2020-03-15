@@ -453,10 +453,12 @@ class BasicModel:
         if biases:
             X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
                        strides=[stride, stride], padding='same', bias_initializer=Constant(0.0),
-                       kernel_regularizer=regularizers.l2(0.0005))(X)
+                       kernel_regularizer=regularizers.l2(0.0005),
+                       bias_regularizer=regularizers.l2(0.0005))(X)
         else:
             X = Conv2D(filters=out_filters, kernel_size=(filter_size, filter_size),
-                       strides=[stride, stride], padding='same', kernel_regularizer=regularizers.l2(0.0005))(X)
+                       strides=[stride, stride], padding='same', kernel_regularizer=regularizers.l2(0.0005),
+                       bias_regularizer=regularizers.l2(0.0005))(X)
         return X
 
     def _fc_layer(self, X, n_out, bn=False, last=False):
@@ -466,7 +468,8 @@ class BasicModel:
         else:
             n_in = int(X.shape[1])
         X = Dense(n_out, kernel_initializer=tf.random_normal_initializer(stddev=np.sqrt(2.0 / n_in)),
-                  bias_initializer=Constant(0.0), kernel_regularizer=regularizers.l2(0.0005))(X)
+                  bias_initializer=Constant(0.0), kernel_regularizer=regularizers.l2(0.0005),
+                  bias_regularizer=regularizers.l2(0.0005))(X)
         X = self._batch_norm(X) if bn else X
         if not last:
             X = Activation('relu')(X)
