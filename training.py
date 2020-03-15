@@ -371,8 +371,8 @@ def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_
 
     dataset_class = data_old.MNIST(128, True)
 
-    train_gen = dataset_class.get_train_batches(128, True)
-    test_gen = dataset_class.get_test_batches(128, False)
+    train_gen = dataset_class.get_train_batches(n_batches='all', shuffle=True)
+    test_gen = dataset_class.get_test_batches(n_batches='all', shuffle=False)
     print("Dataset loaded")
 
     if dataset == 'MNIST':
