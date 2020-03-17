@@ -594,8 +594,8 @@ if __name__ == "__main__":
     except Exception:
         name_inp = None
     n_epochs = int(sys.argv[6])
-    #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
-    paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
+    paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
+    #paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
 
     #loaded_model = load_model("mact_trials/paper_CIFAR10_resnet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
