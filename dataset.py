@@ -7,6 +7,9 @@ from tensorflow.keras.utils import Sequence
 import random
 import emnist
 import scipy.io as spio
+import torch
+import torchvision.transforms as transforms
+import torchvision as tv
 
 
 class Dataset:
@@ -288,6 +291,220 @@ class SVHNDataset(Dataset):
 
         return x_train, y_train, x_test, y_test
 
+class TorchDataset(Sequence):
+    def __init__(self, batch_size, augm_flag, mode):
+        self.batch_size = batch_size
+        self.augm_flag = augm_flag
+        self.mode = mode
+        self.train_dataset = None
+        self.test_dataset = None
+        # Num workers is really important. For small datasets it should be 1 (0 slows down x2),
+        # for large datasets 4*n_gpus maybe
+        self.n_workers_train = 1
+        self.n_workers_test = 1
+        self.base_path = '../datasets/'
+
+    @staticmethod
+    def yield_data(iterator, n_batches):
+        for i, (x, y) in enumerate(iterator):
+            if type(x) != np.ndarray:
+                x, y = x.numpy(), y.numpy()
+            yield (x, y)
+            if i + 1 == n_batches:
+                break
+
+    def get_batches(self, shuffle):
+        # Creation of a DataLoader object is instant, the queue starts to fill up on enumerate(train_loader)
+        if self.mode == 'train':
+            self.loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=shuffle,
+                                                       num_workers=self.n_workers_train, drop_last=True)
+        else:
+            self.loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=shuffle,
+                                                      num_workers=self.n_workers_test, drop_last=True)
+        #return self.yield_data(train_loader, n_batches)
+
+    def get_test_batches(self, n_batches, shuffle):
+        test_loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=shuffle,
+                                                  num_workers=self.n_workers_test, drop_last=True)
+        return self.yield_data(test_loader, n_batches)
+
+
+class GrayscaleDataset(TorchDataset):
+    @staticmethod
+    def yield_data(iterator, n_batches):
+        """
+        We need to redefine yield_data() to fix the fact that mnist by default is bs x 28 x 28 and not bs x 28 x 28 x 1
+        """
+        for x_iterator in (iterator):
+            for i, (x, y) in enumerate(x_iterator):
+                x = x[:, :, :, np.newaxis]  # bs x 28 x 28   ->   bs x 28 x 28 x 1
+                x, y = x.numpy(), y.numpy()
+                yield (x, y)
+                if i + 1 == n_batches:
+                    break
+
+
+class MNIST(GrayscaleDataset):
+    def __init__(self, batch_size, augm_flag, mode, shuffle):
+        super().__init__(batch_size, augm_flag, mode)
+        self.n_train, self.n_test = 60000, 10000
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 28, 28, 1
+        self.data_dir = self.base_path + 'mnist/'
+        self.shuffle = shuffle
+
+        transform_base = [transforms.Lambda(lambda x: np.array(x) / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = tv.datasets.MNIST(self.data_dir, train=True, transform=transform_train, download=True)
+        self.test_dataset = tv.datasets.MNIST(self.data_dir, train=False, transform=transform_test, download=True)
+        if self.mode == 'train':
+            self.loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=self.shuffle,
+                                                       num_workers=self.n_workers_train, drop_last=True)
+        else:
+            self.loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=self.shuffle,
+                                                      num_workers=self.n_workers_test, drop_last=True)
+
+    def __len__(self):
+        if self.mode == 'train':
+            return math.ceil(self.n_train / self.batch_size)
+        else:
+            return math.ceil(self.n_test / self.batch_size)
+        #return len(self.train_dataset)
+
+    def __getitem__(self, item):
+        X, y = next(iter(self.loader))
+        X = X[:, :, :, np.newaxis]  # bs x 28 x 28   ->   bs x 28 x 28 x 1
+        X, y = X.numpy(), y.numpy()
+        return X, tf.keras.utils.to_categorical(y, self.n_classes)
+
+class FMNIST(GrayscaleDataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 60000, 10000
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 28, 28, 1
+        self.data_dir = self.base_path + 'fmnist/'
+
+        transform_base = [transforms.Lambda(lambda x: np.array(x) / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.FashionMNIST(self.data_dir, train=True, transform=transform_train, download=True)
+        self.test_dataset = datasets.FashionMNIST(self.data_dir, train=False, transform=transform_test, download=True)
+
+
+class EMNIST(GrayscaleDataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 60000, 10000
+        # TODO: actually, these numbers are smaller than the real ones.
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 28, 28, 1
+        self.data_dir = self.base_path + 'emnist/'
+
+        transform_base = [transforms.Lambda(lambda x: np.array(x).T / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.EMNIST(self.data_dir, split='letters', train=True, transform=transform_train,
+                                             download=True)
+        self.test_dataset = datasets.EMNIST(self.data_dir, split='letters', train=False, transform=transform_test,
+                                            download=True)
+
+
+class CIFAR10(Dataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 50000, 10000
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 32, 32, 3
+        self.data_dir = self.base_path + 'cifar10/'
+
+        # normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
+        # transformations = transforms.Compose([transforms.ToTensor(), normalize])
+        transform_base = [transforms.Lambda(lambda x: np.array(x) / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomHorizontalFlip(),
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.CIFAR10(self.data_dir, train=True, transform=transform_train, download=True)
+        self.test_dataset = datasets.CIFAR10(self.data_dir, train=False, transform=transform_test, download=True)
+
+
+class CIFAR10Grayscale(GrayscaleDataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 50000, 10000
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 28, 28, 3
+        self.data_dir = self.base_path + 'cifar10/'
+
+        # normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
+        # transformations = transforms.Compose([transforms.ToTensor(), normalize])
+        transform_base = [
+            transforms.Resize(size=(self.height, self.width)),  # resize from 32x32 to 28x28
+            transforms.Lambda(lambda x: np.array(x).mean(axis=2) / 255.0)  # make them black-and-white
+        ]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomHorizontalFlip(),
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.CIFAR10(self.data_dir, train=True, transform=transform_train, download=True)
+        self.test_dataset = datasets.CIFAR10(self.data_dir, train=False, transform=transform_test, download=True)
+
+
+class CIFAR100(Dataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 50000, 10000
+        self.n_classes = 100
+        self.height, self.width, self.n_colors = 32, 32, 3
+        self.data_dir = self.base_path + 'cifar100/'
+
+        # normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
+        # transformations = transforms.Compose([transforms.ToTensor(), normalize])
+        transform_base = [transforms.Lambda(lambda x: np.array(x) / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomHorizontalFlip(),
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.CIFAR100(self.data_dir, train=True, transform=transform_train, download=True)
+        self.test_dataset = datasets.CIFAR100(self.data_dir, train=False, transform=transform_test, download=True)
+
+
+class SVHN(Dataset):
+    def __init__(self, batch_size, augm_flag):
+        super().__init__(batch_size, augm_flag)
+        self.n_train, self.n_test = 73257, 26032
+        self.n_classes = 10
+        self.height, self.width, self.n_colors = 32, 32, 3
+        self.data_dir = self.base_path + 'svhn/'
+
+        # normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
+        # transformations = transforms.Compose([transforms.ToTensor(), normalize])
+        transform_base = [transforms.Lambda(lambda x: np.array(x) / 255.0)]
+        transform_train = transforms.Compose([
+                                                 transforms.RandomCrop(self.height, padding=4),
+                                             ] + transform_base)
+        transform_test = transforms.Compose(transform_base)
+        transform_train = transform_train if self.augm_flag else transform_test
+        self.train_dataset = datasets.SVHN(self.data_dir, split='train', transform=transform_train, download=True)
+        self.test_dataset = datasets.SVHN(self.data_dir, split='test', transform=transform_test, download=True)
+
 
 class DataGenerator(Sequence):
     def __init__(self, dataset, batch_size, shuffle, mode='train', aug=None):
@@ -317,14 +534,14 @@ class DataGenerator(Sequence):
             return math.ceil(self.n_test/self.batch_size)
 
     def __getitem__(self, item):
+        print(item)
         indexes = self.indexes[item*self.batch_size:(item+1)*self.batch_size]
 
         X, y = self.__data_generation(indexes)
         return X, tf.keras.utils.to_categorical(y, self.n_classes)
 
     def get_analysis(self):
-        indexes = self.indexes[:self.batch_size]
-        X, y = self.__data_generation(indexes)
+        X, y = self.__data_generation(self.indexes)
         return X, tf.keras.utils.to_categorical(y, self.n_classes)
 
     def _random_crop(self, input_data):
@@ -382,9 +599,9 @@ class DataGenerator(Sequence):
         return X, y
 
     def on_epoch_end(self):
-        if self.mode == 'train':
-            self.indexes = np.arange(self.n_train)
-        else:
-            self.indexes = np.arange(self.n_test)
+        #if self.mode == 'train':
+        #    self.indexes = np.arange(self.n_train)
+        #else:
+        #    self.indexes = np.arange(self.n_test)
         if self.shuffle:
             np.random.shuffle(self.indexes)
