@@ -369,8 +369,8 @@ def torch_trial(dataset, model_name, folder_name, name=None, mact=True, n_epochs
     steps_epoch = int(data.n_train/batch_size)
     val_steps = int(data.n_test/batch_size)
 
-    dataset_class = MNIST(128, True, 'train', True)
-    dataset_class_test = MNIST(128, False, 'test', False)
+    dataset_class = MNIST(128, True, 'train')
+    dataset_class_test = MNIST(128, False, 'test')
 
     train_gen = dataset_class.get_batches(shuffle=True)
     test_gen = dataset_class_test.get_batches(shuffle=False)
@@ -405,8 +405,8 @@ def torch_trial(dataset, model_name, folder_name, name=None, mact=True, n_epochs
         ]
 
     print("STarting training")
-    H = model.fit_generator(dataset_class, steps_per_epoch=steps_epoch, validation_steps=dataset_class_test,
-                            validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=1,
+    H = model.fit_generator(dataset_class, steps_per_epoch=steps_epoch, validation_steps=val_steps,
+                            validation_data=dataset_class_test, epochs=n_epochs, callbacks=callbacks, workers=1,
                             max_queue_size=30)
     print("Model trained")
 
@@ -701,7 +701,7 @@ if __name__ == "__main__":
     #used_dataset = EMnistDataset(aug=False)
     #used_dataset = Cifar10GrayScale(aug=False)
     #layer_output_analyser("params_log/paper_MNIST_lenet_mact.h5", "Cifar10Grey", used_dataset)
-    #saved_model_tests("torch_trial/torch/paper_MNIST_lenet_softmax.h5", "MNIST")
+    #saved_model_tests("torch_imp_trial/torch_imp_trial/paper_MNIST_lenet_mact.h5", "MNIST")
     #loaded_model = load_model("regularization/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
 
