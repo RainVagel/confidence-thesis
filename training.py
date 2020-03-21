@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from analysis import BaseAnalyser
 from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, \
-    FMnistDataset, DataGenerator, MNIST
+    FMnistDataset, DataGenerator
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner,\
     ResNetSmallRunner, lmd_added_loss
 import dataset_old as data_old
@@ -465,32 +465,22 @@ def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_
 
     print("Loading dataset")
     if dataset == 'SVHN':
-        train_aug = ['randomcrop', 'normalize']
-        test_aug = ['normalize']
-        data = SVHNDataset()
+        dataset_class = data_old.SVHN(128, True)
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
     elif dataset == 'MNIST':
-        train_aug = ['randomcrop', 'normalize']
-        test_aug = ['normalize']
-        data = MnistDataset()
+        dataset_class = data_old.MNIST(128, True)
         model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
     elif dataset == 'CIFAR10':
-        train_aug = ['horizontalflip', 'randomcrop', 'normalize']
-        test_aug = ['normalize']
-        data = CifarDataset()
+        dataset_class = data_old.CIFAR10(128, True)
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=10)
     elif dataset == 'CIFAR100':
-        train_aug = ['horizontalflip', 'randomcrop', 'normalize']
-        test_aug = ['normalize']
-        data = CifarDataset(cifar_version=100)
+        dataset_class = data_old.CIFAR100(128, True)
         model = runner.load_model(input_shape=(32, 32, 3), num_classes=100)
     else:
         raise Exception('Unsupported dataset for training')
 
-    steps_epoch = int(data.n_train/batch_size)
-    val_steps = int(data.n_test/batch_size)
-
-    dataset_class = data_old.MNIST(128, True)
+    steps_epoch = int(dataset_class.n_train/batch_size)
+    val_steps = int(dataset_class.n_test/batch_size)
 
     train_gen = dataset_class.get_train_batches(n_batches='all', shuffle=True)
     test_gen = dataset_class.get_test_batches(n_batches='all', shuffle=False)
@@ -582,7 +572,6 @@ def mnist_yield_trial():
     train_gen = DataGenerator(data, 128, True, aug=train_aug)
     test_gen = DataGenerator(data, 128, False, aug=test_aug)
 
-    #train_gen = MnistDataset().load_dataset()
     model = runner.load_model(input_shape=(28, 28, 1), num_classes=10)
     print("Dataset loaded")
 
@@ -715,9 +704,9 @@ if __name__ == "__main__":
     except Exception:
         name_inp = None
     n_epochs = int(sys.argv[6])
-    torch_trial(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
+    #torch_trial(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
     #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
-    #paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
+    paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
 
     #loaded_model = load_model("mact_trials/paper_CIFAR10_resnet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())

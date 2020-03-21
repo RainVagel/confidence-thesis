@@ -47,12 +47,14 @@ class Dataset:
 
     @staticmethod
     def yield_data(iterator, n_batches):
-        for i, (x, y) in enumerate(iterator):
-            if type(x) != np.ndarray:
-                x, y = x.numpy(), y.numpy()
-            yield (x, y)
-            if i + 1 == n_batches:
-                break
+        for x_iterator in repeat(iterator):
+            for i, (x, y) in enumerate(x_iterator):
+                print(y)
+                if type(x) != np.ndarray:
+                    x, y = x.numpy(), y.numpy()
+                yield (x, y)
+                if i + 1 == n_batches:
+                    break
 
     def get_train_batches(self, n_batches, shuffle):
         # Creation of a DataLoader object is instant, the queue starts to fill up on enumerate(train_loader)
