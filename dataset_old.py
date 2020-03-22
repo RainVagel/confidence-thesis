@@ -49,7 +49,6 @@ class Dataset:
     def yield_data(iterator, n_batches):
         for x_iterator in repeat(iterator):
             for i, (x, y) in enumerate(x_iterator):
-                print(y)
                 if type(x) != np.ndarray:
                     x, y = x.numpy(), y.numpy()
                 yield (x, y)
