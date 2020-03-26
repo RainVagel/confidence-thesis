@@ -513,8 +513,7 @@ def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_
         ]
 
     print("STarting training")
-    H = model.fit_generator(train_gen, steps_per_epoch=steps_epoch, validation_steps=val_steps,
-                            validation_data=test_gen, epochs=n_epochs, callbacks=callbacks, workers=1,
+    H = model.fit_generator(train_gen, steps_per_epoch=steps_epoch, epochs=n_epochs, callbacks=callbacks, workers=1,
                             max_queue_size=30)
     print("Model trained")
 
