@@ -618,11 +618,12 @@ def mnist_yield_trial():
 
 def rbs_generator(true_data, rbs_data_lst):
     datasets = {}
-    data = true_data
-    tru_x_test, tru_y_test = DataGenerator(data, data.n_test, False, "test", aug=['normalize']).get_analysis()
+    tru_x_test, tru_y_test = true_data.get_analysis()
+    #tru_x_test, tru_y_test = DataGenerator(data, data.n_test, False, "test", aug=['normalize']).get_analysis()
     for data in rbs_data_lst:
-        test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
-        x_test, y_test = test_gen.get_analysis()
+        #test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
+        #x_test, y_test = test_gen.get_analysis()
+        x_test, y_test = data.get_analysis()
         datasets[data.__class__.__name__] = (x_test, y_test)
     return tru_x_test, tru_y_test, datasets
 
@@ -631,25 +632,30 @@ def saved_model_tests(model_name, dataset):
     loaded_model = load_model(model_name, custom_objects={'MActAbs': MActAbs})
 
     if dataset.upper() == 'MNIST':
-        trained_dataset = MnistDataset(aug=False)
+        #trained_dataset = MnistDataset(aug=False)
+        trained_dataset = data_old.MNIST(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
-                                                         [FMnistDataset(aug=False), EMnistDataset(aug=False),
-                                                          Cifar10GrayScale(aug=False)])
+                                                         [data_old.FMNIST(batch_size=10000, augm_flag=False),
+                                                          data_old.EMNIST(batch_size=10000, augm_flag=False),
+                                                          data_old.CIFAR10Grayscale(batch_size=10000, augm_flag=False)])
     elif dataset.upper() == 'CIFAR10':
-        trained_dataset = CifarDataset(cifar_version=10, aug=False)
+        #trained_dataset = CifarDataset(cifar_version=10, aug=False)
+        trained_dataset = data_old.CIFAR10(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
-                                                         [SVHNDataset(aug=False),
-                                                          CifarDataset(cifar_version=100, aug=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                         [data_old.SVHN(batch_size=26032, augm_flag=False),
+                                                          data_old.CIFAR100(batch_size=10000, augm_flag=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
     elif dataset.upper() == 'CIFAR100':
-        trained_dataset = CifarDataset(cifar_version=100, aug=False)
+        #trained_dataset = CifarDataset(cifar_version=100, aug=False)
+        trained_dataset = data_old.CIFAR100(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
-                                                         [SVHNDataset(aug=False),
-                                                          CifarDataset(cifar_version=10, aug=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                         [data_old.SVHN(batch_size=26032, augm_flag=False),
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
     elif dataset.upper() == 'SVHN':
-        trained_dataset = SVHNDataset(aug=False)
+        #trained_dataset = SVHNDataset(aug=False)
+        trained_dataset = data_old.SVHN(batch_size=26032, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
-                                                         [CifarDataset(cifar_version=100, aug=False),
-                                                          CifarDataset(cifar_version=10, aug=False)])  # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                         [data_old.CIFAR100(batch_size=10000, augm_flag=False),
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False)])  # Missing LSUN_classroom and imagenet_minus_cifar10
     else:
         raise Exception("Rubbish datasets not defined for this dataset")
 
@@ -693,6 +699,7 @@ if __name__ == "__main__":
     #loaded_model = load_model("regularization/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
 
+    #rbs_generator(data_old.MNIST(batch_size=10000, augm_flag=False), None)
     dataset_inp = sys.argv[1]
     model_inp = sys.argv[2]
     folder_name = sys.argv[3]

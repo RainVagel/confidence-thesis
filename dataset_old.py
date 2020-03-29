@@ -55,6 +55,13 @@ class Dataset:
                 if i + 1 == n_batches:
                     break
 
+    @staticmethod
+    def analysis_data(iterator):
+        for x, y in iterator:
+            if type(x) != np.ndarray:
+                x, y = x.numpy(), y.numpy()
+        return x, y
+
     def get_train_batches(self, n_batches, shuffle):
         # Creation of a DataLoader object is instant, the queue starts to fill up on enumerate(train_loader)
         train_loader = torch.utils.data.DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=shuffle,
@@ -65,6 +72,11 @@ class Dataset:
         test_loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=shuffle,
                                                   num_workers=self.n_workers_test, drop_last=True)
         return self.yield_data(test_loader, n_batches)
+
+    def get_analysis(self):
+        test_loader = torch.utils.data.DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False,
+                                                  num_workers=self.n_workers_test, drop_last=True)
+        return self.analysis_data(test_loader)
 
 
 class GrayscaleDataset(Dataset):
@@ -80,6 +92,14 @@ class GrayscaleDataset(Dataset):
                 yield (x, y)
                 if i + 1 == n_batches:
                     break
+
+    @staticmethod
+    def analysis_data(iterator):
+        for x, y in iterator:
+            if type(x) != np.ndarray:
+                x = x[:, :, :, np.newaxis]  # bs x 28 x 28   ->   bs x 28 x 28 x 1
+                x, y = x.numpy(), y.numpy()
+        return x, y
 
 
 class MNIST(GrayscaleDataset):
