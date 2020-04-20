@@ -42,7 +42,7 @@ class Dataset:
         # Num workers is really important. For small datasets it should be 1 (0 slows down x2),
         # for large datasets 4*n_gpus maybe
         self.n_workers_train = 1
-        self.n_workers_test = 1
+        self.n_workers_test = 0
         self.base_path = '../datasets/'
 
     @staticmethod
@@ -251,8 +251,7 @@ class LSUNClassroom(Dataset):
         self.n_train, self.n_test = 168103, 300
         self.n_classes = 1  # i.e. only the classroom
         self.height, self.width, self.n_colors = 32, 32, 3
-        self.data_dir = '/scratch/maksym'
-        # self.data_dir = self.base_path + 'lsun/'
+        self.data_dir = self.base_path + 'lsun'
 
         # normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2616])
         # transformations = transforms.Compose([transforms.ToTensor(), normalize])

@@ -3,6 +3,9 @@ from math import ceil
 from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
+from collections import defaultdict
+import os
+import pickle
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Activation
@@ -446,7 +449,7 @@ def torch_trial(dataset, model_name, folder_name, name=None, mact=True, n_epochs
                 filehandle.write("{};{}\n".format(b, c))
 
 
-def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_epochs=100):
+def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_epochs=100, activ=None):
     batch_size = 128
 
     print(mact)
@@ -458,7 +461,7 @@ def paper_train_torch(dataset, model_name, folder_name, name=None, mact=True, n_
     if model_name == 'resnet':
         runner = ResNetSmallRunner(mact=mact)
     elif model_name == 'lenet':
-        runner = LeNetRunner(mact=mact)
+        runner = LeNetRunner(mact=mact, activation=activ)
     else:
         raise Exception('Unsupported model')
     print("Model loaded")
@@ -624,38 +627,47 @@ def rbs_generator(true_data, rbs_data_lst):
         #test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
         #x_test, y_test = test_gen.get_analysis()
         x_test, y_test = data.get_analysis()
+        y_test = tf.one_hot(y_test, data.n_classes)
         datasets[data.__class__.__name__] = (x_test, y_test)
-    return tru_x_test, tru_y_test, datasets
+    return tru_x_test, tf.one_hot(tru_y_test, true_data.n_classes), datasets
 
 
 def saved_model_tests(model_name, dataset):
     loaded_model = load_model(model_name, custom_objects={'MActAbs': MActAbs})
 
     if dataset.upper() == 'MNIST':
-        #trained_dataset = MnistDataset(aug=False)
         trained_dataset = data_old.MNIST(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
                                                          [data_old.FMNIST(batch_size=10000, augm_flag=False),
                                                           data_old.EMNIST(batch_size=10000, augm_flag=False),
                                                           data_old.CIFAR10Grayscale(batch_size=10000, augm_flag=False)])
     elif dataset.upper() == 'CIFAR10':
-        #trained_dataset = CifarDataset(cifar_version=10, aug=False)
         trained_dataset = data_old.CIFAR10(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
                                                          [data_old.SVHN(batch_size=26032, augm_flag=False),
-                                                          data_old.CIFAR100(batch_size=10000, augm_flag=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                          data_old.CIFAR100(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          # data_old.ImageNetMinusCifar10(batch_size=30000,
+                                                          #                               augm_flag=False)
+                                                          ])
     elif dataset.upper() == 'CIFAR100':
-        #trained_dataset = CifarDataset(cifar_version=100, aug=False)
         trained_dataset = data_old.CIFAR100(batch_size=10000, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
                                                          [data_old.SVHN(batch_size=26032, augm_flag=False),
-                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False)]) # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          # data_old.ImageNetMinusCifar10(batch_size=30000,
+                                                          #                               augm_flag=False)
+                                                          ])
     elif dataset.upper() == 'SVHN':
-        #trained_dataset = SVHNDataset(aug=False)
         trained_dataset = data_old.SVHN(batch_size=26032, augm_flag=False)
         tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
                                                          [data_old.CIFAR100(batch_size=10000, augm_flag=False),
-                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False)])  # Missing LSUN_classroom and imagenet_minus_cifar10
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          # data_old.ImageNetMinusCifar10(batch_size=30000,
+                                                          #                               augm_flag=False)
+                                                          ])
     else:
         raise Exception("Rubbish datasets not defined for this dataset")
 
@@ -665,19 +677,55 @@ def saved_model_tests(model_name, dataset):
     tru_lbl = analyser.tru(tru_y_test)
     conf_tru_test = analyser.max_conf(tru_test_pred)
     print("Model: {}".format(model_name))
-    print("MMC, dataset: {}, value: {}".format(trained_dataset.__class__.__name__, np.mean(conf_tru_test)))
+    print("MMC, dataset: {}, value: {}".format(dataset, np.mean(conf_tru_test)))
 
-    for key in datasets:
-        rbs_x_test = datasets[key][0]
-        rbs_y_test = datasets[key][1]
-        tru_rbs_lbl = analyser.tru(rbs_y_test)*False
-        rbs_pred_test = loaded_model.predict(rbs_x_test)
-        conf_rbs_test = analyser.max_conf(rbs_pred_test)
-        print("MMC, dataset: {}, value: {}".format(key, np.mean(conf_rbs_test)))
-        (fpr, tpr, thresholds), auc_score = analyser.roc(tru_rbs_lbl, conf_rbs_test, tru_lbl, conf_tru_test)
-        print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
-        fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(conf_tru_test, conf_rbs_test)
-        print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
+    # calculated_values = dict()
+    #
+    # for key in datasets:
+    #     rbs_x_test = datasets[key][0]
+    #     rbs_y_test = datasets[key][1]
+    #     tru_rbs_lbl = analyser.tru(rbs_y_test)*False
+    #     rbs_pred_test = loaded_model.predict(rbs_x_test)
+    #     conf_rbs_test = analyser.max_conf(rbs_pred_test)
+    #     mmc = np.mean(conf_rbs_test)
+    #     #print("MMC, dataset: {}, value: {}".format(key, mmc))
+    #     (fpr, tpr, thresholds), auc_score = analyser.roc(tru_rbs_lbl, conf_rbs_test, tru_lbl, conf_tru_test)
+    #     #print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
+    #     fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(conf_tru_test, conf_rbs_test)
+    #     #print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
+    #     calculated_values[key] = {'mmc': mmc, 'fpr': fpr, 'tpr': tpr, 'fpr95': fpr95, 'auroc': auc_score}
+    # return calculated_values
+
+
+def name_getter(name):
+    splitted = name.split('.')
+    splitted_2 = splitted[0].split('_')
+    return '{}_{}'.format(splitted_2[1], splitted_2[-1])
+
+def to_dict(d):
+    if isinstance(d, defaultdict):
+        return dict((k, to_dict(v)) for k, v in d.items())
+    return d
+
+def all_model_analysis(folder):
+    files_list = os.walk(folder)
+    results_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for stuff in files_list:
+        if '/' in stuff[0]:
+            item = next((item for item in stuff[2] if '.h5' in item), None)
+            file_path = '{}/{}'.format(stuff[0], item)
+            calculated_values = saved_model_tests(file_path, item.split('_')[1])
+            model_name = name_getter(item)
+            # for k, v in calculated_values.items():
+            #     for k2, v2 in v.items():
+            #         results_dict[model_name][k][k2].append(v2)
+
+    results_dict = to_dict(results_dict)
+
+    #with open('all_analysis.pickle', 'wb') as handle:
+    #    pickle.dump(results_dict, handle)
+
+    #print(files_list)
 
 
 def layer_output_analyser(model, dataset_name, dataset):
@@ -690,10 +738,7 @@ def layer_output_analyser(model, dataset_name, dataset):
     np.savetxt("{}_{}_pre_output_layer.csv".format(model.split(".")[0], dataset_name), output_layer, delimiter=";")
 
 if __name__ == "__main__":
-    #used_dataset = MnistDataset(aug=False)
-    #used_dataset = FMnistDataset(aug=False)
-    #used_dataset = EMnistDataset(aug=False)
-    #used_dataset = Cifar10GrayScale(aug=False)
+    #all_model_analysis('exps_paper')
     #layer_output_analyser("params_log/paper_MNIST_lenet_mact.h5", "Cifar10Grey", used_dataset)
     #saved_model_tests("torch_imp_trial/torch_imp_trial/paper_MNIST_lenet_mact.h5", "MNIST")
     #loaded_model = load_model("regularization/paper_MNIST_lenet_softmax.h5", custom_objects={'MActAbs': MActAbs})
@@ -710,9 +755,10 @@ if __name__ == "__main__":
     except Exception:
         name_inp = None
     n_epochs = int(sys.argv[6])
+    activ = sys.argv[7]
     #torch_trial(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
     #paper_train(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
-    paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs)
+    paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs, activ)
 
     #loaded_model = load_model("mact_trials/paper_CIFAR10_resnet_softmax.h5", custom_objects={'MActAbs': MActAbs})
     #print(loaded_model.summary())
@@ -721,10 +767,6 @@ if __name__ == "__main__":
      #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
 
      #loaded_model = load_model("mact_trials/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
-
-     #print(loaded_model.predict(x_test))
-     #analyser = BaseAnalyser()
-     #print(analyser.get_output(x_test, loaded_model, -2))
 
     #model = create_tanh_model()
     #moons_dataset = MoonsDataset()
@@ -760,6 +802,4 @@ if __name__ == "__main__":
     #moons_dataset = MoonsDataset()
 
     #X, y, X_test, y_test = moons_dataset.four_set_two_moons(n_samples=1000)
-
-    #analyser.single_output_plot(model=loaded_model, layer=-2, file_name="trololo", layers="lubub", plot_min=0.0, plot_max=2.0)
 

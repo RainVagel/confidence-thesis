@@ -1,4 +1,5 @@
 import csv
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -146,6 +147,9 @@ class BaseAnalyser:
     def _max_conf(self, preds):
         return np.max(preds, axis=1)
 
+    # def tru(self, a):
+    #     return np.isin(a[:, 0], [0, 1])
+
     def tru(self, a):
         return np.isin(a[:, 0], [0, 1])
 
@@ -169,9 +173,60 @@ class BaseAnalyser:
         FPR = np.sum(conf_f >= PERC) / len(conf_f)
         return FPR, PERC
 
+
+def plot_auroc(fpr, tpr, label, title):
+    plt.plot(fpr, tpr, label=label)
+    plt.title(title)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend(loc='lower right')
+    #plt.show()
+
+
+def title_maker(name):
+    splitted_name = name.split("_")
+    if 'mact' in splitted_name[1]:
+        other_part = ' Radial Softmax'
+    else:
+        other_part = ' Softmax'
+    return splitted_name[0] + other_part + ' Area Under Curve'
+
+
+def compute_analysis(file):
+    with open(file, 'rb') as handle:
+        df = pickle.load(handle)
+    final_results = dict()
+    for k, v in df.items():
+        inner_result = dict()
+        for k2, v2 in v.items():
+            most_inner_result = dict()
+            most_inner_result['mmc'] = np.mean(v2['mmc'])
+            most_inner_result['fpr95'] = np.mean(v2['fpr95'])
+            most_inner_result['fpr'] = [np.mean(el) for el in zip(*v2['fpr'])]
+            most_inner_result['tpr'] = [np.mean(el) for el in zip(*v2['tpr'])]
+            most_inner_result['auroc'] = np.mean(v2['auroc'])
+            inner_result[k2] = most_inner_result
+        final_results[k] = inner_result
+
+    for trained_set, rubbish_sets in final_results.items():
+        print('Trained Set')
+        print(trained_set)
+        for rbs_set, rbs_set_values in rubbish_sets.items():
+            print('Rubbish Set')
+            print(rbs_set)
+            print('mmc: ', rbs_set_values['mmc'])
+            print('auroc: ', rbs_set_values['auroc'])
+            print('fpr95: ', rbs_set_values['fpr95'])
+            label = rbs_set + ', area: ' + str(round(rbs_set_values['auroc'], 3))
+            plot_auroc(rbs_set_values['fpr'], rbs_set_values['tpr'], label, title_maker(trained_set))
+        plt.savefig('exps_paper/' + trained_set + '_auc.png')
+        plt.clf()
+
+    #plot_auroc(most_inner_result['fpr'], most_inner_result['tpr'])
+
 if __name__ == '__main__':
 
-    data = MnistDataset()
+    compute_analysis('all_analysis.pickle')
     #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
 
     #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})

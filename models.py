@@ -10,7 +10,7 @@ from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Layer, Add
-from tensorflow.keras.layers import Conv2D, MaxPool2D, BatchNormalization, Input, AveragePooling2D
+from tensorflow.keras.layers import Conv2D, MaxPool2D, BatchNormalization, Input, AveragePooling2D, LeakyReLU
 from tensorflow.keras.optimizers import RMSprop, Adam
 from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import Callback
@@ -93,7 +93,7 @@ class MActAbs(MAct):
     def call(self, inputs):
         first_exp = tf.exp(self.c - tf.abs(inputs))
 
-        p = (first_exp + tf.exp(-self.b)) / tf.reduce_sum(first_exp + tf.exp(-self.b), axis=1, keepdims=True)
+        p = (first_exp + tf.exp(self.b)) / tf.reduce_sum(first_exp + tf.exp(self.b), axis=1, keepdims=True)
 
         # p = tf.exp(inputs) / tf.reduce_sum(tf.exp(inputs), axis=0, keepdims=True)
         return p
@@ -461,7 +461,7 @@ class BasicModel:
                        bias_regularizer=regularizers.l2(0.0005))(X)
         return X
 
-    def _fc_layer(self, X, n_out, bn=False, last=False):
+    def _fc_layer(self, X, n_out, bn=False, last=False, activation='relu'):
         if len(X.shape) == 4:
             n_in = int(X.shape[1]) * int(X.shape[2]) * int(X.shape[3])
             X = Flatten()(X)
@@ -472,7 +472,10 @@ class BasicModel:
                   bias_regularizer=regularizers.l2(0.0005))(X)
         X = self._batch_norm(X) if bn else X
         if not last:
-            X = Activation('relu')(X)
+            if activation == 'leakyrelu':
+                X = LeakyReLU(alpha=0.3)(X)
+            else:
+                X = Activation(activation)(X)
         else:
             if self.mact:
                 X = MActAbs()(X)
@@ -524,11 +527,12 @@ class LeNetRunner(BasicModel):
 
     # Based on LeNet from here: https://github.com/max-andr/relu_networks_overconfident/blob/master/models.py
 
-    def __init__(self, mact):
+    def __init__(self, mact, activation='relu'):
         super().__init__(mact=mact)
         self.strides = [1, 1]
         self.n_filters = [32, 64]
         self.n_fc = [1024]
+        self.activation = activation
 
     def load_model(self, input_shape, num_classes):
         bn = False
@@ -537,15 +541,8 @@ class LeNetRunner(BasicModel):
         X = MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='same')(X)
         X = self._conv_layer(X, 5, self.n_filters[1], self.strides[1], bn=bn, biases=not bn)
         X = MaxPool2D(pool_size=(2, 2), strides=(2, 2), padding='same')(X)
-        X = self._fc_layer(X, self.n_fc[0])
+        X = self._fc_layer(X, self.n_fc[0], activation=self.activation)
         X = self._fc_layer(X, num_classes, last=True)
 
         model = Model(inputs=X_input, outputs=X, name="LeNet")
         return model
-
-
-def lmd_added_loss(lmbd):
-    def loss(y_true, y_pred):
-        cce = CategoricalCrossentropy()
-        return cce(y_true, y_pred) + lmbd
-    return loss
