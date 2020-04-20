@@ -19,7 +19,7 @@ from analysis import BaseAnalyser
 from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, \
     FMnistDataset, DataGenerator
 from models import ModelRunner, MAct, MActModelRunner, MActAbs, CustomHistory, CifarModelRunner, LeNetRunner,\
-    ResNetSmallRunner, lmd_added_loss
+    ResNetSmallRunner
 import dataset_old as data_old
 
 
