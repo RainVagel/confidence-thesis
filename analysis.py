@@ -9,9 +9,6 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model, Model
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from dataset import MoonsDataset, CifarDataset, MnistDataset, Cifar10GrayScale, SVHNDataset, EMnistDataset, \
-    FMnistDataset, DataGenerator
-
 
 class BaseAnalyser:
     def __init__(self, m_act=True):

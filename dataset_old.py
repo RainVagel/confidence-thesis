@@ -12,6 +12,10 @@ import scipy.misc
 from PIL import Image
 from itertools import repeat
 
+"""
+Based on Hein, M. et al. https://github.com/max-andr/relu_networks_overconfident/blob/master/data.py
+"""
+
 
 def get_next_batch(X, Y, batch_size, shuffle=False):
     n_batches = len(X) // batch_size
