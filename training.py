@@ -145,6 +145,7 @@ if __name__ == "__main__":
         name_inp = None
     n_epochs = int(sys.argv[6])
     activ = sys.argv[7]
+    activ = None if activ == '' else activ
 
     paper_train_torch(dataset_inp, model_inp, folder_name, name_inp, mact_inp, n_epochs, activ)
 
