@@ -1,15 +1,7 @@
-import math
-
 import numpy as np
 from sklearn import datasets
 import tensorflow as tf
-from tensorflow.keras.utils import Sequence
 import random
-import emnist
-import scipy.io as spio
-import torch
-import torchvision.transforms as transforms
-import torchvision as tv
 
 
 class Dataset:

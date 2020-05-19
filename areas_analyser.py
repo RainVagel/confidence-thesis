@@ -1,10 +1,7 @@
-from math import ceil
-import pandas as pd
 from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 from collections import defaultdict
-import pickle
 import os
 
 from tensorflow.keras.models import load_model
@@ -49,9 +46,9 @@ def dataset_generator(x_start, x_end, y_start, y_end, step):
 
 def model_load(model):
     try:
-        loaded_model = load_model(model, custom_objects={'MActAbs': RadialSoftmax})
+        loaded_model = load_model(model, custom_objects={'RadialSoftmax': RadialSoftmax})
     except ValueError:
-        loaded_model = load_model(model, custom_objects={'MAct': RadialSoftmax})
+        loaded_model = load_model(model, custom_objects={'RadialSoftmax': RadialSoftmax})
     return loaded_model
 
 def all_model_analysis(folder):
@@ -107,6 +104,9 @@ def cross_ent(probs, y):
 
 
 def softmax_play_plot(model, plot_min, plot_max, max_prob, file_name, layers, X, y, c, b, classes=2, temp=None):
+    """
+    Based on Hein, M. et al. :https://github.com/max-andr/relu_networks_overconfident/blob/master/analysis.py
+    """
     n_grid = 200
     x_plot = np.linspace(plot_min, plot_max, n_grid)
     y_plot = np.linspace(plot_min, plot_max, n_grid)

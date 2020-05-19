@@ -1,24 +1,14 @@
 from __future__ import print_function
 
-import csv
-
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.keras import initializers, regularizers
-from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Layer, Add
 from tensorflow.keras.layers import Conv2D, MaxPool2D, BatchNormalization, Input, AveragePooling2D, LeakyReLU
-from tensorflow.keras.optimizers import RMSprop, Adam
-from tensorflow.keras.metrics import CategoricalAccuracy
 from tensorflow.keras.callbacks import Callback
-from tensorflow.keras.backend import constant, bias_add
 from tensorflow.keras.initializers import TruncatedNormal, Constant
-
-from analysis import BaseAnalyser
-from sklearn.utils import shuffle
 
 
 class CustomHistory(Callback):
@@ -53,11 +43,11 @@ class RadialSoftmax(Layer):
         self.c = self.add_weight(name="c",
                                  shape=(input_shape[1],),
                                  initializer=self.c_initializer,
-                                 trainable=self.c_trainable)  # Initialiseerida c ühtedeks / nullideks
+                                 trainable=self.c_trainable)
         self.b = self.add_weight(name="b",
                                  shape=(input_shape[1],),
                                  initializer=self.b_initializer,
-                                 trainable=self.b_trainable)  # Initialiseerida b nullideks
+                                 trainable=self.b_trainable)
         super(RadialSoftmax, self).build(input_shape)
 
     def call(self, inputs):

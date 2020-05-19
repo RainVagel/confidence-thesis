@@ -6,10 +6,6 @@ import scipy.io
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import pickle
-import os
-import scipy.misc
-from PIL import Image
 from itertools import repeat
 
 """

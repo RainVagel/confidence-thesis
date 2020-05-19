@@ -1,13 +1,18 @@
 import csv
 import pickle
+import os
+import sys
+from collections import defaultdict
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model, Model
 from sklearn.metrics import roc_auc_score, roc_curve
+
+from models import RadialSoftmax
+import dataset_old as data_old
 
 
 class BaseAnalyser:
@@ -56,6 +61,9 @@ class BaseAnalyser:
         plt.clf()
 
     def plot(self, model, plot_min, plot_max, max_prob, file_name, layers, X, y):
+        """
+        Based on Hein, M. et al. :https://github.com/max-andr/relu_networks_overconfident/blob/master/analysis.py
+        """
         n_grid = 200
         x_plot = np.linspace(plot_min, plot_max, n_grid)
         y_plot = np.linspace(plot_min, plot_max, n_grid)
@@ -221,13 +229,115 @@ def compute_analysis(file):
 
     #plot_auroc(most_inner_result['fpr'], most_inner_result['tpr'])
 
+def rbs_generator(true_data, rbs_data_lst):
+    datasets = {}
+    tru_x_test, tru_y_test = true_data.get_analysis()
+    #tru_x_test, tru_y_test = DataGenerator(data, data.n_test, False, "test", aug=['normalize']).get_analysis()
+    for data in rbs_data_lst:
+        #test_gen = DataGenerator(data, data.n_test, False, "test", aug=['normalize'])
+        #x_test, y_test = test_gen.get_analysis()
+        x_test, y_test = data.get_analysis()
+        y_test = tf.one_hot(y_test, data.n_classes)
+        datasets[data.__class__.__name__] = (x_test, y_test)
+    return tru_x_test, tf.one_hot(tru_y_test, true_data.n_classes), datasets
+
+
+def saved_model_tests(model_name, dataset):
+    loaded_model = load_model(model_name, custom_objects={'RadialSoftmax': RadialSoftmax})
+
+    if dataset.upper() == 'MNIST':
+        trained_dataset = data_old.MNIST(batch_size=10000, augm_flag=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [data_old.FMNIST(batch_size=10000, augm_flag=False),
+                                                          data_old.EMNIST(batch_size=10000, augm_flag=False),
+                                                          data_old.CIFAR10Grayscale(batch_size=10000, augm_flag=False)])
+    elif dataset.upper() == 'CIFAR10':
+        trained_dataset = data_old.CIFAR10(batch_size=10000, augm_flag=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [data_old.SVHN(batch_size=26032, augm_flag=False),
+                                                          data_old.CIFAR100(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          ])
+    elif dataset.upper() == 'CIFAR100':
+        trained_dataset = data_old.CIFAR100(batch_size=10000, augm_flag=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [data_old.SVHN(batch_size=26032, augm_flag=False),
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          ])
+    elif dataset.upper() == 'SVHN':
+        trained_dataset = data_old.SVHN(batch_size=26032, augm_flag=False)
+        tru_x_test, tru_y_test, datasets = rbs_generator(trained_dataset,
+                                                         [data_old.CIFAR100(batch_size=10000, augm_flag=False),
+                                                          data_old.CIFAR10(batch_size=10000, augm_flag=False),
+                                                          data_old.LSUNClassroom(batch_size=300, augm_flag=False)
+                                                          ])
+    else:
+        raise Exception("Rubbish datasets not defined for this dataset")
+
+    analyser = BaseAnalyser()
+
+    tru_test_pred = loaded_model.predict(tru_x_test)
+    tru_lbl = analyser.tru(tru_y_test)
+    conf_tru_test = analyser.max_conf(tru_test_pred)
+    print("Model: {}".format(model_name))
+    print("MMC, dataset: {}, value: {}".format(dataset, np.mean(conf_tru_test)))
+
+    calculated_values = dict()
+
+    for key in datasets:
+        rbs_x_test = datasets[key][0]
+        rbs_y_test = datasets[key][1]
+        tru_rbs_lbl = analyser.tru(rbs_y_test)*False
+        rbs_pred_test = loaded_model.predict(rbs_x_test)
+        conf_rbs_test = analyser.max_conf(rbs_pred_test)
+        mmc = np.mean(conf_rbs_test)
+        print("MMC, dataset: {}, value: {}".format(key, mmc))
+        (fpr, tpr, thresholds), auc_score = analyser.roc(tru_rbs_lbl, conf_rbs_test, tru_lbl, conf_tru_test)
+        print("ROC AUC, dataset: {}, score: {}".format(key, auc_score))
+        fpr95, clean_tpr95 = analyser.fpr_at_95_tpr(conf_tru_test, conf_rbs_test)
+        print("FPR at {}%, dataset: {}, score: {}".format(95, key, fpr95))
+        calculated_values[key] = {'mmc': mmc, 'fpr': fpr, 'tpr': tpr, 'fpr95': fpr95, 'auroc': auc_score}
+    return calculated_values
+
+
+def name_getter(name):
+    splitted = name.split('.')
+    splitted_2 = splitted[0].split('_')
+    return '{}_{}'.format(splitted_2[1], splitted_2[-1])
+
+def to_dict(d):
+    if isinstance(d, defaultdict):
+        return dict((k, to_dict(v)) for k, v in d.items())
+    return d
+
+def all_model_analysis(folder):
+    files_list = os.walk(folder)
+    results_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for stuff in files_list:
+        if '/' in stuff[0]:
+            item = next((item for item in stuff[2] if '.h5' in item), None)
+            file_path = '{}/{}'.format(stuff[0], item)
+            calculated_values = saved_model_tests(file_path, item.split('_')[1])
+            model_name = name_getter(item)
+            for k, v in calculated_values.items():
+                for k2, v2 in v.items():
+                    results_dict[model_name][k][k2].append(v2)
+
+    results_dict = to_dict(results_dict)
+
+    with open('extras_analysis.pickle', 'wb') as handle:
+        pickle.dump(results_dict, handle)
+
+    #print(files_list)
+
 if __name__ == '__main__':
 
-    compute_analysis('all_analysis.pickle')
-    #x_test, y_test = DataGenerator(data, 128, False, mode='test', aug=['normalize']).get_analysis()
-
-    #loaded_model = load_model("tf_upgrade_2/paper_MNIST_lenet_mact.h5", custom_objects={'MActAbs': MActAbs})
-
-    #print(loaded_model.predict(x_test))
-    #analyser = BaseAnalyser()
-    #print(analyser.get_output_trial(x_test, loaded_model, 'dense_1'))
+    method = sys.argv[1]
+    file = sys.argv[2]
+    if method.lower() == 'analysis':
+        all_model_analysis(file)
+    elif method.lower() == 'compute':
+        compute_analysis('all_analysis.pickle')
+    else:
+        raise Exception("Unrecognised input!")
