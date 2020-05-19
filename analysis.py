@@ -338,6 +338,6 @@ if __name__ == '__main__':
     if method.lower() == 'analysis':
         all_model_analysis(file)
     elif method.lower() == 'compute':
-        compute_analysis('all_analysis.pickle')
+        compute_analysis(file)
     else:
         raise Exception("Unrecognised input!")
